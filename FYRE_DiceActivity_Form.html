@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FYRE Dice Activity — Group Submission</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 28px 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 32px 36px;
+      max-width: 560px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .logo-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 22px; padding-bottom: 18px;
+      border-bottom: 3px solid #2E75B6;
+    }
+    .logo-dot {
+      width: 38px; height: 38px; background: #1F3864;
+      border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; color: white; font-size: 22px;
+    }
+    h1 { font-size: 19px; color: #1F3864; font-weight: 700; }
+    .subtitle { font-size: 12px; color: #777; margin-top: 2px; }
+
+    .instructions {
+      background: #D6E4F0; border-left: 4px solid #2E75B6;
+      border-radius: 6px; padding: 11px 15px;
+      font-size: 13px; color: #1F3864; line-height: 1.55;
+      margin-bottom: 22px;
+    }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; color: #2E75B6;
+      text-transform: uppercase; letter-spacing: 0.8px;
+      margin: 18px 0 7px;
+    }
+
+    label {
+      display: block; font-size: 13px; font-weight: 600;
+      color: #333; margin-bottom: 5px;
+    }
+    .hint { font-weight: 400; color: #999; font-size: 12px; }
+
+    select, input[type="text"], input[type="number"] {
+      width: 100%; padding: 9px 13px;
+      border: 2px solid #ddd; border-radius: 8px;
+      font-size: 14px; color: #222;
+      transition: border-color 0.2s; background: #fafafa;
+    }
+    select:focus, input:focus {
+      outline: none; border-color: #2E75B6; background: white;
+    }
+
+    /* ── Student rows ─────────────────────────────────── */
+    #students-container { margin-top: 6px; }
+
+    .student-row {
+      border: 2px solid #e8e8e8; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 10px;
+      background: #fafafa; position: relative;
+      transition: border-color 0.15s;
+    }
+    .student-row:focus-within { border-color: #2E75B6; background: white; }
+
+    .row-header {
+      font-size: 12px; font-weight: 700; color: #2E75B6;
+      text-transform: uppercase; letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+
+    .row-fields {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label { margin-bottom: 4px; font-size: 12px; }
+
+    .p6-badge {
+      background: #FFF3CD; border: 2px solid #D4A017;
+      border-radius: 8px; padding: 9px 10px;
+      text-align: center; font-size: 13px; font-weight: 700;
+      color: #1F3864; min-width: 90px;
+      white-space: nowrap;
+    }
+    .p6-badge .label { font-weight: 400; font-size: 10px;
+                        color: #888; display: block; margin-bottom: 2px; }
+    .p6-good  { color: #2E7D32; border-color: #2E7D32; background: #E8F5E9; }
+    .p6-ok    { color: #D4A017; border-color: #D4A017; background: #FFF3CD; }
+    .p6-far   { color: #C62828; border-color: #C62828; background: #FDECEA; }
+
+    .remove-btn {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none; color: #bbb;
+      font-size: 18px; cursor: pointer; line-height: 1;
+      padding: 2px 6px; border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .remove-btn:hover { color: #C62828; background: #FDECEA; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .add-btn {
+      width: 100%; padding: 10px;
+      background: white; color: #2E75B6;
+      border: 2px dashed #2E75B6; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s; margin-top: 2px;
+    }
+    .add-btn:hover { background: #D6E4F0; }
+
+    .submit-btn {
+      width: 100%; margin-top: 22px; padding: 14px;
+      background: #1F3864; color: white; border: none;
+      border-radius: 10px; font-size: 16px; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.3px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .submit-btn:hover  { background: #2E75B6; }
+    .submit-btn:active { transform: scale(0.98); }
+    .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+    /* ── Error / progress ────────────────────────────── */
+    .error-msg {
+      display: none; background: #FDECEA; color: #C62828;
+      border: 1px solid #C62828; border-radius: 6px;
+      padding: 9px 13px; font-size: 13px; margin-top: 10px;
+    }
+    .progress { margin-top: 10px; height: 4px; background: #eee;
+                border-radius: 2px; display: none; }
+    .progress-bar { height: 100%; background: #2E75B6;
+                    border-radius: 2px; width: 0%; transition: width 0.4s; }
+
+    /* ── Success ─────────────────────────────────────── */
+    .success { display: none; text-align: center; padding: 20px 10px; }
+    .success .check { font-size: 52px; margin-bottom: 10px; }
+    .success h3 { color: #2E7D32; font-size: 20px; margin-bottom: 8px; }
+    .success p  { color: #555; font-size: 14px; line-height: 1.6; }
+
+    hr.divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <div class="logo-bar">
+    <div class="logo-dot">⚄</div>
+    <div>
+      <h1>Rolling the Odds — Group Submission</h1>
+      <div class="subtitle">FYRE · Probability Activity · Lehigh University</div>
+    </div>
+  </div>
+
+  <div class="instructions">
+    <strong>One submission per group.</strong>
+    Each student adds their own row, then the group submits together.
+    Every student's result will appear as a separate row on the class board.
+  </div>
+
+  <div id="form-section">
+
+    <div class="section-label">Group</div>
+    <select id="group">
+      <option value="">— select your group number —</option>
+      <option value="1">Group 1</option>
+      <option value="2">Group 2</option>
+      <option value="3">Group 3</option>
+      <option value="4">Group 4</option>
+      <option value="5">Group 5</option>
+      <option value="6">Group 6</option>
+      <option value="7">Group 7</option>
+      <option value="8">Group 8</option>
+    </select>
+
+    <hr class="divider">
+    <div class="section-label">Student results
+      <span class="hint" style="text-transform:none;font-size:11px;letter-spacing:0;">
+        — each person fills in their own row
+      </span>
+    </div>
+
+    <div id="students-container">
+      <!-- rows injected by JS -->
+    </div>
+
+    <button class="add-btn" onclick="addRow()">+ Add another student</button>
+
+    <div class="error-msg" id="error-msg"></div>
+    <div class="progress" id="progress">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+
+    <button class="submit-btn" id="submit-btn" onclick="submitForm()">
+      Submit Group Results →
+    </button>
+  </div>
+
+  <div class="success" id="success-section">
+    <div class="check">✅</div>
+    <h3>Group submitted!</h3>
+    <p id="success-msg"></p>
+  </div>
+
+</div>
+
+<script>
+  // ── Replace with your deployed Apps Script URL ─────────────────────────────
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPYPENX7ghnppvOz5WBlh_2AjhkIKTGFtC8lK4LT2zrDIFGs020Dcn0uWBcOR-LikFDg/exec';
+  // ────────────────────────────────────────────────────────────────────────────
+
+  const TRIALS = 30;   // fixed per student
+  let rowCount = 0;
+
+  // Start with one empty row
+  addRow();
+
+  function addRow() {
+    rowCount++;
+    const n = rowCount;
+    const container = document.getElementById('students-container');
+
+    const div = document.createElement('div');
+    div.className = 'student-row';
+    div.id = 'row-' + n;
+    div.innerHTML = `
+      <div class="row-header">Student ${n}</div>
+      ${n > 1 ? `<button class="remove-btn" onclick="removeRow(${n})" title="Remove">✕</button>` : ''}
+      <div class="row-fields">
+        <div class="field">
+          <label>First name</label>
+          <input type="text" id="name-${n}" placeholder="e.g. Alex" autocomplete="off">
+        </div>
+        <div class="field">
+          <label>Number of 6s</label>
+          <input type="number" id="sixes-${n}" placeholder="0"
+                 min="0" max="${TRIALS}" oninput="updateBadge(${n})">
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <div class="p6-badge" id="badge-${n}">
+          <span class="label">P(6)</span>—
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+    document.getElementById('name-' + n).focus();
+    renumberHeaders();
+  }
+
+  function removeRow(n) {
+    const el = document.getElementById('row-' + n);
+    if (el) el.remove();
+    renumberHeaders();
+  }
+
+  function renumberHeaders() {
+    const rows = document.querySelectorAll('.student-row');
+    rows.forEach((row, i) => {
+      const hdr = row.querySelector('.row-header');
+      if (hdr) hdr.textContent = 'Student ' + (i + 1);
+    });
+  }
+
+  function updateBadge(n) {
+    const sixes  = parseInt(document.getElementById('sixes-' + n).value);
+    const badge  = document.getElementById('badge-' + n);
+    if (isNaN(sixes) || document.getElementById('sixes-' + n).value === '') {
+      badge.className = 'p6-badge';
+      badge.innerHTML = '<span class="label">P(6)</span>—';
+      return;
+    }
+    const p6   = sixes / TRIALS;
+    const diff = Math.abs(p6 - 1/6);
+    const cls  = diff < 0.04 ? 'p6-badge p6-good'
+               : diff < 0.10 ? 'p6-badge p6-ok'
+               :               'p6-badge p6-far';
+    badge.className = cls;
+    badge.innerHTML = `<span class="label">P(6)</span>${p6.toFixed(3)}`;
+  }
+
+  function submitForm() {
+    const group   = document.getElementById('group').value;
+    const errEl   = document.getElementById('error-msg');
+    const btn     = document.getElementById('submit-btn');
+    const prog    = document.getElementById('progress');
+    const progB   = document.getElementById('progress-bar');
+    errEl.style.display = 'none';
+
+    if (!group) { showError('Please select a group number.'); return; }
+
+    // Collect rows
+    const rows  = document.querySelectorAll('.student-row');
+    const students = [];
+    let ok = true;
+
+    rows.forEach((row, idx) => {
+      const rowId  = row.id.replace('row-', '');
+      const name   = document.getElementById('name-'  + rowId).value.trim();
+      const sixes  = document.getElementById('sixes-' + rowId).value;
+      if (!name) {
+        showError(`Student ${idx + 1}: please enter a name.`);
+        ok = false; return;
+      }
+      if (sixes === '' || isNaN(parseInt(sixes))) {
+        showError(`Student ${idx + 1} (${name}): please enter a number of 6s.`);
+        ok = false; return;
+      }
+      if (parseInt(sixes) > TRIALS) {
+        showError(`Student ${idx + 1} (${name}): count of 6s cannot exceed ${TRIALS}.`);
+        ok = false; return;
+      }
+      students.push({ studentNum: idx + 1, name, sixes: parseInt(sixes) });
+    });
+
+    if (!ok || students.length === 0) return;
+
+    if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+      showSuccess(group, students);
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+    prog.style.display = 'block';
+    progB.style.width  = '40%';
+
+    const payload = new URLSearchParams({
+      group,
+      count:    students.length,
+      timestamp: new Date().toISOString(),
+    });
+    students.forEach((s, i) => {
+      payload.append('name_'  + (i + 1), s.name);
+      payload.append('sixes_' + (i + 1), s.sixes);
+    });
+
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body:   payload,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(r => r.json())
+    .then(() => {
+      progB.style.width = '100%';
+      setTimeout(() => showSuccess(group, students), 300);
+    })
+    .catch(err => {
+      console.error(err);
+      showError('Could not reach the server. Please try again or tell your instructor.');
+      btn.disabled = false;
+      btn.textContent = 'Submit Group Results →';
+      prog.style.display = 'none';
+    });
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error-msg');
+    el.textContent = '⚠ ' + msg;
+    el.style.display = 'block';
+  }
+
+  function showSuccess(group, students) {
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('success-section').style.display = 'block';
+    const lines = students.map(s =>
+      `${s.name}: ${s.sixes} sixes → P(6) = ${(s.sixes / TRIALS).toFixed(3)}`
+    ).join('<br>');
+    document.getElementById('success-msg').innerHTML =
+      `<strong>Group ${group}</strong> — ${students.length} result${students.length > 1 ? 's' : ''} submitted:<br><br>` +
+      `<span style="font-family:monospace;font-size:13px;">${lines}</span><br><br>` +
+      `Watch the class board to see how the estimate is converging!`;
+  }
+</script>
+</body>
+</html>
