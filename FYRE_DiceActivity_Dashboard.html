@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FYRE Dice Activity — Live Dashboard</title>
+  <!-- Plotly.js: full-featured charting library, loaded from CDN -->
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #F0F4F8;
+      color: #1F3864;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header bar ─────────────────────────────────────────────────────── */
+    #header {
+      background: #1F3864;
+      color: white;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #header h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+    #header .sub { font-size: 12px; color: #90CAF9; margin-top: 1px; }
+
+    #live-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: #90CAF9;
+    }
+    #live-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #4CAF50; animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    #live-dot.paused { background: #aaa; animation: none; }
+
+    /* ── Stats row ──────────────────────────────────────────────────────── */
+    #stats-row {
+      background: white;
+      border-bottom: 2px solid #D6E4F0;
+      padding: 8px 24px;
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .stat { text-align: center; }
+    .stat .val { font-size: 22px; font-weight: 700; color: #1F3864; }
+    .stat .lbl { font-size: 10px; color: #888; text-transform: uppercase;
+                  letter-spacing: 0.6px; }
+    #class-p6-val { color: #2E75B6; }
+    #true-val-stat { color: #D4A017; }
+
+    /* ── Chart ──────────────────────────────────────────────────────────── */
+    #chart { flex: 1; min-height: 0; }
+
+    /* ── Controls ───────────────────────────────────────────────────────── */
+    #controls {
+      background: white;
+      border-top: 2px solid #D6E4F0;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .ctrl-group {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: #444;
+    }
+    .ctrl-label { font-weight: 600; font-size: 12px; color: #2E75B6;
+                  text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Toggle switch */
+    .toggle-wrap { display: flex; align-items: center; gap: 6px; }
+    .toggle {
+      position: relative; width: 40px; height: 22px; cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: #ccc; border-radius: 22px;
+      transition: background 0.2s;
+    }
+    .slider:before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; left: 3px; bottom: 3px;
+      background: white; border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    input:checked + .slider { background: #2E75B6; }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    /* Buttons */
+    .btn {
+      padding: 6px 14px; border: none; border-radius: 6px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-blue   { background: #2E75B6; color: white; }
+    .btn-gold   { background: #D4A017; color: white; }
+    .btn-red    { background: #C62828; color: white; }
+    .btn-gray   { background: #90A4AE; color: white; }
+
+    /* Biased input */
+    #biased-input {
+      padding: 5px 10px; border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: 13px; width: 120px;
+    }
+
+    /* Divider between control groups */
+    .vdiv { width: 1px; height: 28px; background: #ddd; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ────────────────────────────────────────────────────────────── -->
+<div id="header">
+  <div>
+    <h1>⚄ Rolling the Odds — Live Class Results</h1>
+    <div class="sub">FYRE · Probability Activity · Lehigh University</div>
+  </div>
+  <div id="live-badge">
+    <div id="live-dot"></div>
+    <span id="live-label">Live · updating every <span id="interval-label">10</span>s</span>
+  </div>
+</div>
+
+<!-- ── Stats row ──────────────────────────────────────────────────────────── -->
+<div id="stats-row">
+  <div class="stat">
+    <div class="val" id="stat-students">0</div>
+    <div class="lbl">Students submitted</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="stat-trials">0</div>
+    <div class="lbl">Total rolls</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="class-p6-val">—</div>
+    <div class="lbl">Class P(6) estimate</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="true-val-stat">0.167</div>
+    <div class="lbl">True value (1/6)</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="stat-gap">—</div>
+    <div class="lbl">Gap from truth</div>
+  </div>
+  <div class="stat" style="margin-left:auto;">
+    <div class="val" id="last-update" style="font-size:13px;color:#888;">—</div>
+    <div class="lbl">Last updated</div>
+  </div>
+</div>
+
+<!-- ── Chart ──────────────────────────────────────────────────────────────── -->
+<div id="chart"></div>
+
+<!-- ── Controls ───────────────────────────────────────────────────────────── -->
+<div id="controls">
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">Color by group</span>
+    <label class="toggle toggle-wrap">
+      <input type="checkbox" id="toggle-color" onchange="redraw()">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="vdiv"></div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">Biased groups</span>
+    <input type="text" id="biased-input" placeholder="e.g. 2, 5, 7"
+           title="Enter group numbers with biased dice, separated by commas">
+    <button class="btn btn-red" onclick="revealBiased()">Reveal ⚠</button>
+    <button class="btn btn-gray" onclick="hideBiased()">Hide</button>
+  </div>
+
+  <div class="vdiv"></div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">Running average</span>
+    <label class="toggle toggle-wrap">
+      <input type="checkbox" id="toggle-avg" checked onchange="redraw()">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">True value line</span>
+    <label class="toggle toggle-wrap">
+      <input type="checkbox" id="toggle-true" checked onchange="redraw()">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="vdiv"></div>
+
+  <div class="ctrl-group">
+    <span class="ctrl-label">CLT clusters</span>
+    <label class="toggle toggle-wrap">
+      <input type="checkbox" id="toggle-clt" onchange="redraw()">
+      <span class="slider"></span>
+    </label>
+    <span style="font-size:11px;color:#888;">n=30 &amp; n=120</span>
+  </div>
+
+  <div class="vdiv"></div>
+
+  <div class="ctrl-group">
+    <button class="btn btn-blue"  onclick="togglePause()">⏸ Pause</button>
+    <button class="btn btn-gray"  onclick="resetZoom()">⤢ Reset zoom</button>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  CONFIGURATION — the only things you normally need to change
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+// 1. Paste your Apps Script URL here (same one used in the form).
+//    The dashboard appends ?action=data to fetch the sheet contents.
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyPYPENX7ghnppvOz5WBlh_2AjhkIKTGFtC8lK4LT2zrDIFGs020Dcn0uWBcOR-LikFDg/exec';
+
+// 2. How often the chart refreshes (milliseconds).
+//    5000 = every 5 seconds  |  10000 = every 10 seconds
+const POLL_INTERVAL_MS = 10000;
+
+// 3. Rolls per student (must match the form — currently 30)
+const TRIALS_PER_STUDENT = 30;
+
+// 4. The true probability this activity is estimating (1/6 for a fair die)
+const TRUE_P = 1 / 6;   // ≈ 0.1667
+
+// 5. Group colours — one colour per group number 1–8.
+//    Change any hex code to adjust a group's colour.
+const GROUP_COLORS = {
+  '1': '#2196F3',  // blue
+  '2': '#4CAF50',  // green
+  '3': '#FF9800',  // orange
+  '4': '#9C27B0',  // purple
+  '5': '#F44336',  // red
+  '6': '#00ACC1',  // cyan
+  '7': '#FF5722',  // deep orange
+  '8': '#6D4C41',  // brown
+};
+
+// 6. Colour used for group dots when "color by group" is OFF
+const DEFAULT_DOT_COLOR = '#90A4AE';   // grey
+
+// 7. How large the dots are
+const DOT_SIZE = 12;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════════════════════
+let allRows       = [];          // latest data from the sheet
+let biasedRevealed = false;      // whether biased groups are currently shown
+let paused        = false;
+let pollTimer     = null;
+
+// ── Chart initialisation ──────────────────────────────────────────────────
+// This sets up an empty chart the first time the page loads.
+// Plotly.react() is called later to update it with real data.
+Plotly.newPlot('chart', [], getLayout(), {
+  responsive:  true,
+  displayModeBar: true,
+  displaylogo: false,
+  modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
+});
+
+// ── Polling loop ──────────────────────────────────────────────────────────
+function startPolling() {
+  fetchData();   // immediate fetch on load
+  pollTimer = setInterval(fetchData, POLL_INTERVAL_MS);
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.querySelector('.btn-blue');
+  const dot = document.getElementById('live-dot');
+  if (paused) {
+    clearInterval(pollTimer);
+    btn.textContent = '▶ Resume';
+    dot.classList.add('paused');
+    document.getElementById('live-label').textContent = 'Paused';
+  } else {
+    startPolling();
+    btn.textContent = '⏸ Pause';
+    dot.classList.remove('paused');
+    document.getElementById('live-label').innerHTML =
+      'Live · updating every <span id="interval-label">' +
+      (POLL_INTERVAL_MS/1000) + '</span>s';
+  }
+}
+
+// ── Data fetch ────────────────────────────────────────────────────────────
+async function fetchData() {
+  if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
+    // Demo mode: generate fake data so you can preview the chart layout
+    allRows = generateDemoData();
+    redraw();
+    updateStats();
+    return;
+  }
+
+  try {
+    const url  = APPS_SCRIPT_URL + '?action=data&t=' + Date.now();
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.rows) {
+      allRows = json.rows;
+      redraw();
+      updateStats();
+      document.getElementById('last-update').textContent =
+        new Date().toLocaleTimeString();
+    }
+  } catch (err) {
+    console.warn('Fetch failed:', err);
+  }
+}
+
+// ── Build Plotly traces from current data ────────────────────────────────
+function buildTraces() {
+  const showColor    = document.getElementById('toggle-color').checked;
+  const showAvg      = document.getElementById('toggle-avg').checked;
+  const showTrue     = document.getElementById('toggle-true').checked;
+  const biasedGroups = getBiasedGroups();
+  const traces       = [];
+
+  if (allRows.length === 0) return traces;
+
+  // ── Individual student dots ──────────────────────────────────────────
+  // Group dots by their colour bucket so we get a legend entry per group
+  const buckets = {};   // key = group string (or 'all')
+
+  allRows.forEach(row => {
+    const key  = showColor ? String(row.group) : 'all';
+    if (!buckets[key]) buckets[key] = { x:[], y:[], names:[], groups:[], symbols:[] };
+    buckets[key].x.push(row.cumTrials);
+    buckets[key].y.push(row.p6);
+    buckets[key].names.push(row.name + ' (Group ' + row.group + ')');
+    buckets[key].groups.push(row.group);
+    // Biased groups get a diamond marker if revealed
+    const isBiased = biasedRevealed && biasedGroups.includes(String(row.group));
+    buckets[key].symbols.push(isBiased ? 'diamond' : 'circle');
+  });
+
+  Object.entries(buckets).forEach(([key, b]) => {
+    const isAll     = key === 'all';
+    const baseColor = isAll ? DEFAULT_DOT_COLOR : (GROUP_COLORS[key] || '#888');
+
+    // Dot colours: normal vs biased (if revealed)
+    const markerColors = b.groups.map(g => {
+      if (biasedRevealed && biasedGroups.includes(String(g))) return '#C62828';
+      return baseColor;
+    });
+
+    traces.push({
+      type: 'scatter', mode: 'markers',
+      name: isAll ? 'Individual estimates' : 'Group ' + key,
+      x: b.x, y: b.y,
+      text: b.names,
+      hovertemplate: '<b>%{text}</b><br>Rolls so far: %{x}<br>P(6) = %{y:.3f}<extra></extra>',
+      marker: {
+        size:    DOT_SIZE,
+        color:   markerColors,
+        symbol:  b.symbols,
+        line:    { width: 1.5, color: 'white' },
+        opacity: 0.85,
+      },
+      legendgroup: key,
+      showlegend: true,
+    });
+  });
+
+  // ── Running class average line ──────────────────────────────────────
+  if (showAvg && allRows.length > 0) {
+    // Sort by cumTrials to get a clean left-to-right line
+    const sorted = [...allRows].sort((a,b) => a.cumTrials - b.cumTrials);
+    traces.push({
+      type: 'scatter', mode: 'lines+markers',
+      name: 'Class running avg',
+      x: sorted.map(r => r.cumTrials),
+      y: sorted.map(r => r.runningP6),
+      hovertemplate: 'After %{x} rolls<br>Class P(6) = %{y:.4f}<extra></extra>',
+      line:   { color: '#1F3864', width: 3 },
+      marker: { size: 5, color: '#1F3864' },
+      showlegend: true,
+    });
+  }
+
+  // ── True value reference line ─────────────────────────────────────
+  // We use a scatter line spanning the x-axis range rather than a shape,
+  // so it appears in the legend.
+  if (showTrue && allRows.length > 0) {
+    const maxX = Math.max(...allRows.map(r => r.cumTrials)) * 1.05;
+    traces.push({
+      type: 'scatter', mode: 'lines',
+      name: 'True P(6) = ' + TRUE_P.toFixed(4),
+      x: [0, maxX],
+      y: [TRUE_P, TRUE_P],
+      hoverinfo: 'skip',
+      line: { color: '#D4A017', width: 2.5, dash: 'dash' },
+      showlegend: true,
+    });
+  }
+
+  // ── CLT cluster overlay ───────────────────────────────────────────────
+  // When the CLT toggle is on, draw two columns of dots:
+  //   • All individual P(6) estimates at exactly x = 30  (one per student)
+  //   • Group-level P(6) estimates at exactly x = 120    (one per group)
+  // Dots are semi-transparent so overlaps accumulate into darker regions,
+  // making high-frequency values visually denser — a natural density strip.
+  // A light grey vertical line drops from the cluster to the x-axis so it
+  // is clear what sample size each column represents.
+  if (document.getElementById('toggle-clt').checked && allRows.length > 0) {
+
+    const showColor = document.getElementById('toggle-color').checked;
+    const biasedGroups = getBiasedGroups();
+
+    // ── n = 30 column: one dot per student at exactly x = 30 ────────────
+    const n30y = [], n30text = [], n30color = [], n30sym = [];
+    allRows.forEach(row => {
+      n30y.push(row.p6);
+      n30text.push(row.name + ' (Grp ' + row.group + '): ' + row.p6.toFixed(3));
+      const isBiased = biasedRevealed && biasedGroups.includes(String(row.group));
+      n30color.push(
+        isBiased ? '#C62828'
+        : showColor ? (GROUP_COLORS[row.group] || DEFAULT_DOT_COLOR)
+        : '#2196F3'
+      );
+      n30sym.push(isBiased ? 'diamond' : 'circle');
+    });
+
+    traces.push({
+      type: 'scatter', mode: 'markers',
+      name: 'Individual est. (n=30)',
+      x: Array(n30y.length).fill(30),   // all exactly at x = 30
+      y: n30y, text: n30text,
+      hovertemplate: '<b>%{text}</b><extra></extra>',
+      marker: {
+        size: DOT_SIZE + 3,
+        color: n30color,
+        symbol: n30sym,
+        line: { width: 0 },    // no outline — cleaner for overlapping dots
+        opacity: 0.35,          // low opacity: overlapping dots accumulate darker
+      },
+      showlegend: true,
+    });
+
+    // ── n = 120 column: one dot per group at exactly x = 120 ────────────
+    const groupMap = {};
+    allRows.forEach(row => {
+      if (!groupMap[row.group]) groupMap[row.group] = { sixes: 0, trials: 0 };
+      groupMap[row.group].sixes  += row.sixes;
+      groupMap[row.group].trials += row.trials;
+    });
+    const groupEntries = Object.entries(groupMap)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+    const n120y = [], n120text = [], n120color = [], n120sym = [];
+    groupEntries.forEach(([grp, d]) => {
+      const gp6 = d.trials > 0 ? d.sixes / d.trials : 0;
+      n120y.push(gp6);
+      n120text.push('Group ' + grp + ' (' + d.trials + ' rolls): ' + gp6.toFixed(3));
+      const isBiased = biasedRevealed && biasedGroups.includes(String(grp));
+      n120color.push(
+        isBiased ? '#C62828'
+        : showColor ? (GROUP_COLORS[grp] || DEFAULT_DOT_COLOR)
+        : '#1F3864'
+      );
+      n120sym.push(isBiased ? 'diamond' : 'square');
+    });
+
+    traces.push({
+      type: 'scatter', mode: 'markers',
+      name: 'Group est. (n=120)',
+      x: Array(n120y.length).fill(120),  // all exactly at x = 120
+      y: n120y, text: n120text,
+      hovertemplate: '<b>%{text}</b><extra></extra>',
+      marker: {
+        size: DOT_SIZE + 5,
+        color: n120color,
+        symbol: n120sym,
+        line: { width: 0 },
+        opacity: 0.45,  // slightly higher than n=30 — fewer groups, less overlap
+      },
+      showlegend: true,
+    });
+
+    // ── Vertical guide lines from x-axis to top of each cluster ─────────
+    // Light grey lines drop from y=0 up to the highest point in each column,
+    // anchoring the cluster visually to its x-axis label (n=30, n=120).
+    [
+      { cx: 30,  ys: n30y  },
+      { cx: 120, ys: n120y },
+    ].forEach(({ cx, ys }) => {
+      if (ys.length === 0) return;
+      traces.push({
+        type: 'scatter', mode: 'lines',
+        name: '',
+        x: [cx, cx],
+        y: [0, Math.max(...ys)],
+        hoverinfo: 'skip',
+        line: { color: '#CCCCCC', width: 1, dash: 'solid' },
+        showlegend: false,
+      });
+    });
+  }
+
+  return traces;
+}
+
+// ── Plotly layout ─────────────────────────────────────────────────────────
+// To change axis labels, font size, background colour, etc. edit this function.
+function getLayout() {
+  return {
+    paper_bgcolor: '#FFFFFF',
+    plot_bgcolor:  '#F8FAFC',
+    font: { family: 'Segoe UI, Arial, sans-serif', size: 13, color: '#333' },
+    xaxis: {
+      title:      { text: 'Cumulative class rolls', font: { size: 14 } },
+      gridcolor:  '#E8EAED',
+      zeroline:   false,
+      tickfont:   { size: 12 },
+      rangemode:  'tozero',
+    },
+    yaxis: {
+      title:      { text: 'P(6) estimate', font: { size: 14 } },
+      gridcolor:  '#E8EAED',
+      zeroline:   false,
+      tickfont:   { size: 12 },
+      // Y-axis range: 0 to 0.5 gives plenty of room to see scatter
+      // Change these numbers if you want a tighter or wider view:
+      range:      [0, 0.45],
+    },
+    legend: {
+      orientation: 'h',
+      x: 0, y: -0.15,
+      font: { size: 12 },
+    },
+    margin: { t: 20, r: 20, b: 80, l: 60 },
+    hovermode: 'closest',
+  };
+}
+
+// ── Update the chart ───────────────────────────────────────────────────────
+function redraw() {
+  Plotly.react('chart', buildTraces(), getLayout(), { responsive: true });
+}
+
+// ── Stats bar ─────────────────────────────────────────────────────────────
+function updateStats() {
+  const n = allRows.length;
+  document.getElementById('stat-students').textContent = n;
+  document.getElementById('stat-trials').textContent   = n * TRIALS_PER_STUDENT;
+
+  if (n > 0) {
+    const lastAvg = allRows.slice().sort((a,b) => b.cumTrials - a.cumTrials)[0].runningP6;
+    const gap     = Math.abs(lastAvg - TRUE_P);
+    document.getElementById('class-p6-val').textContent = lastAvg.toFixed(4);
+    document.getElementById('stat-gap').textContent     = gap.toFixed(4);
+    document.getElementById('stat-gap').style.color     =
+      gap < 0.01 ? '#2E7D32' : gap < 0.03 ? '#D4A017' : '#C62828';
+  } else {
+    document.getElementById('class-p6-val').textContent = '—';
+    document.getElementById('stat-gap').textContent     = '—';
+  }
+}
+
+// ── Biased group controls ─────────────────────────────────────────────────
+function getBiasedGroups() {
+  return document.getElementById('biased-input').value
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s !== '');
+}
+
+function revealBiased() {
+  biasedRevealed = true;
+  document.getElementById('toggle-color').checked = true;  // auto-enable group colors
+  redraw();
+}
+
+function hideBiased() {
+  biasedRevealed = false;
+  redraw();
+}
+
+// ── Reset zoom ────────────────────────────────────────────────────────────
+function resetZoom() {
+  Plotly.relayout('chart', {
+    'xaxis.autorange': true,
+    'yaxis.range':     [0, 0.45]
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  DEMO DATA — used when APPS_SCRIPT_URL is not yet set.
+//  Simulates 32 students submitting over time.
+//  Remove or ignore this function once you have real data.
+// ─────────────────────────────────────────────────────────────────────────
+function generateDemoData() {
+  const rows = [];
+  let cumT = 0, cumS = 0;
+  const groups = [1,1,1,1, 2,2,2,2, 3,3,3,3, 4,4,4,4,
+                  5,5,5,5, 6,6,6,6, 7,7,7,7, 8,8,8,8];
+  // Biased groups (3, 6, 8) get higher P(6)
+  const biased = [3, 6, 8];
+  groups.forEach((g, i) => {
+    const p   = biased.includes(g) ? 0.30 : 1/6;
+    const s   = Math.round(p * 30 + (Math.random()-0.5)*4);
+    const ss  = Math.max(0, Math.min(30, s));
+    cumT     += 30;
+    cumS     += ss;
+    rows.push({
+      group: String(g), studentNum: (i % 4) + 1,
+      name: 'Student ' + (i+1),
+      trials: 30, sixes: ss,
+      p6: ss/30,
+      runningP6: cumS / cumT,
+      cumTrials: cumT,
+    });
+  });
+  return rows;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+//  Start
+// ─────────────────────────────────────────────────────────────────────────
+startPolling();
+</script>
+</body>
+</html>
