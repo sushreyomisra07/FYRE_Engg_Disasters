@@ -5,107 +5,167 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FYRE Dice Activity — Group Submission</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── FYRE Design System v3 ───────────────────────────────────────────── */
+    :root {
+      --paper:   #FAF9F6;
+      --surface: #FFFFFF;
+      --surface2:#F0F5F4;
+      --ink:     #19313F;
+      --ink2:    #3E535D;
+      --ink3:    #52636B;
+      --teal:    #176F78;
+      --ember:   #A33E1F;
+      --ember-s: #FCEFE8;
+      --rule:    #D5E1E0;
+      --border:  #D5E1E0;
+      --r:       8px;
+      --shadow:  0 2px 8px rgba(25,49,63,.06);
+    }
 
     body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: linear-gradient(135deg, #1F3864 0%, #2E75B6 100%);
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--paper);
+      color: var(--ink);
       min-height: 100vh;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding: 28px 16px;
+    }
+
+    /* ── FYRE bar ─────────────────────────────────────────────────────────── */
+    .fyre-bar {
+      display: flex; align-items: center; gap: 18px;
+      min-height: 72px; width: 100%;
+      padding: 10px 28px;
+      background: var(--surface);
+      border-top: 3px solid var(--teal);
+      border-bottom: 1px solid var(--rule);
+    }
+    .fyre-mark { display: flex; align-items: center; gap: 14px; flex: 1; }
+    .fyre-mark .wm {
+      font-size: 22px; font-weight: 700;
+      letter-spacing: .12em; color: var(--teal);
+    }
+    .fyre-mark .course { font-size: 13px; color: var(--ink3); line-height: 1.4; }
+    .fyre-corner { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .fyre-logo {
+      display: block; width: 40px; height: 46px;
+      object-fit: contain; background: white; flex-shrink: 0;
+    }
+    .fyre-tag {
+      font-size: 12px; background: #E8F2F1;
+      color: var(--teal); padding: 7px 10px;
+      border-radius: 4px; white-space: nowrap;
+    }
+
+    /* ── Page layout ──────────────────────────────────────────────────────── */
+    .page-body {
+      display: flex; justify-content: center;
+      padding: 32px 16px 60px;
     }
 
     .card {
-      background: white;
-      border-radius: 16px;
+      background: var(--surface);
+      border-radius: 12px;
       padding: 32px 36px;
-      max-width: 560px;
+      max-width: 580px;
       width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
     }
 
-    .logo-bar {
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 22px; padding-bottom: 18px;
-      border-bottom: 3px solid #2E75B6;
-    }
-    .logo-dot {
-      width: 38px; height: 38px; background: #1F3864;
-      border-radius: 8px; display: flex; align-items: center;
-      justify-content: center; color: white; font-size: 22px;
-    }
-    h1 { font-size: 19px; color: #1F3864; font-weight: 700; }
-    .subtitle { font-size: 12px; color: #777; margin-top: 2px; }
-
-    .instructions {
-      background: #D6E4F0; border-left: 4px solid #2E75B6;
-      border-radius: 6px; padding: 11px 15px;
-      font-size: 13px; color: #1F3864; line-height: 1.55;
+    /* ── Card header ─────────────────────────────────────────────────────── */
+    .card-header {
       margin-bottom: 22px;
+      padding-bottom: 18px;
+      border-bottom: 2px solid var(--rule);
+    }
+    .card-header h1 {
+      font-size: 22px; font-weight: 700;
+      color: var(--ink); letter-spacing: -.02em;
+    }
+    .card-header .subtitle {
+      font-size: 13px; color: var(--ink3); margin-top: 4px;
     }
 
+    /* ── Instructions box ────────────────────────────────────────────────── */
+    .instructions {
+      background: var(--surface2);
+      border-left: 3px solid var(--teal);
+      border-radius: 0 6px 6px 0;
+      padding: 12px 15px;
+      font-size: 13px; color: var(--ink); line-height: 1.55;
+      margin-bottom: 24px;
+    }
+
+    /* ── Section label ───────────────────────────────────────────────────── */
     .section-label {
-      font-size: 11px; font-weight: 700; color: #2E75B6;
+      font-size: 11px; font-weight: 700;
+      color: var(--teal);
       text-transform: uppercase; letter-spacing: 0.8px;
-      margin: 18px 0 7px;
+      margin: 20px 0 8px;
     }
 
     label {
       display: block; font-size: 13px; font-weight: 600;
-      color: #333; margin-bottom: 5px;
+      color: var(--ink2); margin-bottom: 5px;
     }
-    .hint { font-weight: 400; color: #999; font-size: 12px; }
+    .hint { font-weight: 400; color: var(--ink3); font-size: 12px; }
 
     select, input[type="text"], input[type="number"] {
       width: 100%; padding: 9px 13px;
-      border: 2px solid #ddd; border-radius: 8px;
-      font-size: 14px; color: #222;
-      transition: border-color 0.2s; background: #fafafa;
+      border: 1.5px solid var(--border); border-radius: var(--r);
+      font-size: 14px; color: var(--ink);
+      background: var(--paper);
+      font-family: Arial, Helvetica, sans-serif;
+      transition: border-color 0.18s, background 0.18s;
     }
     select:focus, input:focus {
-      outline: none; border-color: #2E75B6; background: white;
+      outline: none; border-color: var(--teal); background: white;
+    }
+    select:focus-visible, input:focus-visible {
+      outline: 3px solid var(--ember); outline-offset: 3px;
     }
 
-    /* ── Student rows ─────────────────────────────────── */
+    /* ── Student rows ────────────────────────────────────────────────────── */
     #students-container { margin-top: 6px; }
 
     .student-row {
-      border: 2px solid #e8e8e8; border-radius: 10px;
+      border: 1.5px solid var(--border); border-radius: 10px;
       padding: 14px 16px; margin-bottom: 10px;
-      background: #fafafa; position: relative;
-      transition: border-color 0.15s;
+      background: var(--paper); position: relative;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .student-row:focus-within { border-color: #2E75B6; background: white; }
+    .student-row:focus-within {
+      border-color: var(--teal); background: var(--surface);
+    }
 
     .row-header {
-      font-size: 12px; font-weight: 700; color: #2E75B6;
+      font-size: 12px; font-weight: 700;
+      color: var(--teal);
       text-transform: uppercase; letter-spacing: 0.6px;
       margin-bottom: 10px;
     }
-
     .row-fields {
       display: grid;
       grid-template-columns: 1fr 110px;
-      gap: 12px;
-      align-items: end;
+      gap: 12px; align-items: end;
     }
-
     .field label { margin-bottom: 4px; font-size: 12px; }
 
+    /* ── P6 badge ────────────────────────────────────────────────────────── */
     .p6-badge {
-      background: #FFF3CD; border: 2px solid #D4A017;
+      background: var(--surface2); border: 1.5px solid var(--border);
       border-radius: 8px; padding: 9px 10px;
       text-align: center; font-size: 13px; font-weight: 700;
-      color: #1F3864; min-width: 90px;
-      white-space: nowrap;
+      color: var(--ink); min-width: 90px; white-space: nowrap;
     }
-    .p6-badge .label { font-weight: 400; font-size: 10px;
-                        color: #888; display: block; margin-bottom: 2px; }
-    .p6-good  { color: #2E7D32; border-color: #2E7D32; background: #E8F5E9; }
-    .p6-ok    { color: #D4A017; border-color: #D4A017; background: #FFF3CD; }
-    .p6-far   { color: #C62828; border-color: #C62828; background: #FDECEA; }
+    .p6-badge .label {
+      font-weight: 400; font-size: 10px;
+      color: var(--ink3); display: block; margin-bottom: 2px;
+    }
+    .p6-good { color: #2E7D32; border-color: #2E7D32; background: #E8F5E9; }
+    .p6-ok   { color: #8a6500; border-color: #c4920a; background: #FFF8DB; }
+    .p6-far  { color: var(--ember); border-color: var(--ember); background: var(--ember-s); }
 
     .remove-btn {
       position: absolute; top: 10px; right: 12px;
@@ -114,58 +174,91 @@
       padding: 2px 6px; border-radius: 4px;
       transition: color 0.15s, background 0.15s;
     }
-    .remove-btn:hover { color: #C62828; background: #FDECEA; }
+    .remove-btn:hover { color: var(--ember); background: var(--ember-s); }
 
-    /* ── Buttons ─────────────────────────────────────── */
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
     .add-btn {
       width: 100%; padding: 10px;
-      background: white; color: #2E75B6;
-      border: 2px dashed #2E75B6; border-radius: 10px;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: background 0.15s; margin-top: 2px;
+      background: var(--surface); color: var(--teal);
+      border: 2px dashed var(--teal); border-radius: 10px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-top: 2px;
+      font-family: Arial, Helvetica, sans-serif;
+      transition: background 0.15s;
     }
-    .add-btn:hover { background: #D6E4F0; }
+    .add-btn:hover { background: #E8F2F1; }
 
     .submit-btn {
-      width: 100%; margin-top: 22px; padding: 14px;
-      background: #1F3864; color: white; border: none;
+      width: 100%; margin-top: 24px; padding: 14px;
+      background: var(--ember); color: white; border: none;
       border-radius: 10px; font-size: 16px; font-weight: 700;
       cursor: pointer; letter-spacing: 0.3px;
+      font-family: Arial, Helvetica, sans-serif;
       transition: background 0.2s, transform 0.1s;
     }
-    .submit-btn:hover  { background: #2E75B6; }
+    .submit-btn:hover  { background: #833218; }
     .submit-btn:active { transform: scale(0.98); }
     .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .submit-btn:focus-visible { outline: 3px solid var(--ember); outline-offset: 3px; }
 
-    /* ── Error / progress ────────────────────────────── */
+    /* ── Error / progress ────────────────────────────────────────────────── */
     .error-msg {
-      display: none; background: #FDECEA; color: #C62828;
-      border: 1px solid #C62828; border-radius: 6px;
+      display: none;
+      background: var(--ember-s); color: var(--ember);
+      border: 1px solid var(--ember); border-radius: 6px;
       padding: 9px 13px; font-size: 13px; margin-top: 10px;
     }
-    .progress { margin-top: 10px; height: 4px; background: #eee;
-                border-radius: 2px; display: none; }
-    .progress-bar { height: 100%; background: #2E75B6;
-                    border-radius: 2px; width: 0%; transition: width 0.4s; }
+    .progress {
+      margin-top: 10px; height: 4px; background: var(--rule);
+      border-radius: 2px; display: none;
+    }
+    .progress-bar {
+      height: 100%; background: var(--teal);
+      border-radius: 2px; width: 0%; transition: width 0.4s;
+    }
 
-    /* ── Success ─────────────────────────────────────── */
-    .success { display: none; text-align: center; padding: 20px 10px; }
-    .success .check { font-size: 52px; margin-bottom: 10px; }
+    /* ── Success ─────────────────────────────────────────────────────────── */
+    .success { display: none; text-align: center; padding: 24px 10px; }
+    .success .check { font-size: 52px; margin-bottom: 12px; }
     .success h3 { color: #2E7D32; font-size: 20px; margin-bottom: 8px; }
-    .success p  { color: #555; font-size: 14px; line-height: 1.6; }
+    .success p  { color: var(--ink2); font-size: 14px; line-height: 1.6; }
 
-    hr.divider { border: none; border-top: 1px solid #eee; margin: 18px 0; }
+    hr.divider {
+      border: none; border-top: 1px solid var(--rule); margin: 20px 0;
+    }
+
+    @media (max-width: 600px) {
+      .fyre-bar { padding: 10px 16px; gap: 10px; }
+      .fyre-mark .course { display: none; }
+      .fyre-mark .wm { font-size: 20px; }
+      .fyre-logo { width: 32px; height: 37px; }
+      .card { padding: 24px 20px; }
+    }
   </style>
 </head>
 <body>
+
+<!-- ── FYRE bar ───────────────────────────────────────────────────────────── -->
+<header class="fyre-bar">
+  <div class="fyre-mark">
+    <img src="design-system/assets/FYRE_Artwork.png" class="fyre-logo" alt="FYRE">
+    <div>
+      <span class="wm">FYRE</span>
+      <div class="course">Engineering Against Natural Disasters &nbsp;·&nbsp; Lehigh University</div>
+    </div>
+  </div>
+  <div class="fyre-corner">
+    <span class="fyre-tag">Week 2 · Dice Activity</span>
+  </div>
+</header>
+
+<!-- ── Main content ───────────────────────────────────────────────────────── -->
+<div class="page-body">
 <div class="card">
 
-  <div class="logo-bar">
-    <div class="logo-dot">⚄</div>
-    <div>
-      <h1>Rolling the Odds — Group Submission</h1>
-      <div class="subtitle">FYRE · Probability Activity · Lehigh University</div>
-    </div>
+  <div class="card-header">
+    <h1>Rolling the Odds — Group Submission</h1>
+    <div class="subtitle">One submission per group · enter each student's result below</div>
   </div>
 
   <div class="instructions">
@@ -218,6 +311,7 @@
     <p id="success-msg"></p>
   </div>
 
+</div>
 </div>
 
 <script>
@@ -305,7 +399,6 @@
 
     if (!group) { showError('Please select a group number.'); return; }
 
-    // Collect rows
     const rows  = document.querySelectorAll('.student-row');
     const students = [];
     let ok = true;
