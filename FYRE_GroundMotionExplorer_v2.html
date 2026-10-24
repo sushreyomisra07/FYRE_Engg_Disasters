@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FYRE — Ground Motion Explorer v2</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper:#FAF9F6; --surface:#FFFFFF; --surface2:#F0F5F4;
+      --ink:#19313F; --ink2:#3E535D; --ink3:#52636B;
+      --teal:#176F78; --teal-lt:#E8F2F1;
+      --ember:#A33E1F; --ember-s:#FCEFE8;
+      --rule:#D5E1E0; --r:8px;
+      --shadow:0 2px 10px rgba(25,49,63,.07);
+    }
+    body { font-family:Arial,Helvetica,sans-serif; background:var(--paper);
+           color:var(--ink); font-size:14px; height:100vh;
+           display:flex; flex-direction:column; overflow:hidden; }
+
+    /* FYRE bar */
+    .fyre-bar { display:flex; align-items:center; gap:16px; min-height:62px;
+      padding:8px 22px; background:var(--surface);
+      border-top:3px solid var(--teal); border-bottom:1px solid var(--rule); flex-shrink:0; }
+    .fyre-mark { display:flex; align-items:center; gap:12px; flex:1; }
+    .fyre-mark .wm { font-size:20px; font-weight:700; letter-spacing:.12em; color:var(--teal); }
+    .fyre-mark .course { font-size:12px; color:var(--ink3); }
+    .fyre-logo { width:34px; height:39px; object-fit:contain; }
+    .fyre-tag  { font-size:12px; background:var(--teal-lt); color:var(--teal);
+                 padding:5px 9px; border-radius:4px; white-space:nowrap; }
+
+    /* Tabs */
+    .stage-tabs { display:flex; gap:0; background:var(--surface);
+      border-bottom:2px solid var(--rule); flex-shrink:0; }
+    .stage-tab { padding:10px 22px; font-size:13px; font-weight:700;
+      cursor:pointer; border:none; background:transparent; color:var(--ink3);
+      border-bottom:3px solid transparent; margin-bottom:-2px;
+      transition:color .15s; font-family:Arial,Helvetica,sans-serif; }
+    .stage-tab:hover { color:var(--teal); }
+    .stage-tab.active { color:var(--teal); border-bottom-color:var(--teal); }
+    .stage-num { display:inline-flex; align-items:center; justify-content:center;
+      width:20px; height:20px; border-radius:50%; background:var(--teal-lt);
+      color:var(--teal); font-size:11px; margin-right:6px; }
+    .stage-tab.active .stage-num { background:var(--teal); color:white; }
+
+    /* Layout */
+    .app { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+    .stage-panel { display:none; flex:1; overflow-y:auto; padding:16px 22px; }
+    .stage-panel.active { display:flex; flex-direction:column; gap:14px; }
+
+    /* Cards */
+    .card { background:var(--surface); border-radius:var(--r);
+      padding:14px 18px; box-shadow:var(--shadow); border:1px solid var(--rule); }
+    .card-title { font-size:13px; font-weight:700; color:var(--teal);
+      text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+    .row { display:flex; gap:14px; flex-wrap:wrap; }
+    .col { flex:1; min-width:180px; }
+
+    /* Controls */
+    select, input[type="number"] {
+      width:100%; padding:7px 10px; border:1.5px solid var(--rule);
+      border-radius:6px; font-size:13px; background:var(--paper);
+      color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+    select:focus, input:focus { outline:none; border-color:var(--teal); background:white; }
+    .ctrl-lbl { font-size:11px; font-weight:700; color:var(--ink3);
+      text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+    .field { display:flex; flex-direction:column; gap:4px; }
+    .btn { padding:8px 16px; border:none; border-radius:6px; font-size:13px;
+      font-weight:700; cursor:pointer; font-family:Arial,Helvetica,sans-serif;
+      transition:background .15s, transform .1s; }
+    .btn:active { transform:scale(.97); }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-primary { background:var(--ember); color:white; }
+    .btn-primary:not(:disabled):hover { background:#833218; }
+    .btn-teal { background:var(--teal); color:white; }
+    .btn-teal:not(:disabled):hover { background:#125c63; }
+    .btn-outline { background:transparent; color:var(--teal); border:1.5px solid var(--teal); }
+    .btn-outline:hover { background:var(--teal-lt); }
+    .btn-sm { padding:5px 12px; font-size:12px; }
+
+    /* Verdict */
+    .verdict { display:none; padding:6px 12px; border-radius:6px;
+      font-size:12px; font-weight:700; margin-top:6px; }
+    .verdict.correct { background:#E8F5E9; color:#2E7D32; }
+    .verdict.close   { background:#FFF8DB; color:#7a6000; }
+    .verdict.far     { background:var(--ember-s); color:var(--ember); }
+
+    /* Stats */
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:8px; margin-top:10px; }
+    .stat-box { background:var(--surface2); border-radius:6px; padding:8px 10px; text-align:center; }
+    .stat-val { font-size:20px; font-weight:700; color:var(--ink); line-height:1; }
+    .stat-lbl { font-size:10px; color:var(--ink3); margin-top:2px; }
+
+    /* Info / warn boxes */
+    .info-box { background:var(--teal-lt); border-left:3px solid var(--teal);
+      padding:8px 12px; border-radius:0 6px 6px 0; font-size:12px;
+      color:var(--ink2); line-height:1.6; }
+    .warn-box { background:var(--ember-s); border-left:3px solid var(--ember);
+      padding:8px 12px; border-radius:0 6px 6px 0; font-size:12px;
+      color:var(--ink2); line-height:1.6; }
+
+    /* Observation inputs */
+    .obs-input { width:100%; border:none; background:transparent;
+      font-family:Arial,Helvetica,sans-serif; font-size:12px;
+      border-bottom:1.5px solid var(--rule); color:var(--ink);
+      padding:2px 0; }
+    .obs-input:focus { outline:none; border-bottom-color:var(--teal); }
+
+    /* Stage 2 compare badge */
+    .pga-match-badge { display:inline-flex; align-items:center; gap:6px;
+      background:var(--teal-lt); border:1.5px solid var(--teal);
+      padding:5px 12px; border-radius:20px; font-size:12px;
+      font-weight:700; color:var(--teal); }
+
+    /* Reveal panel */
+    .reveal-panel { display:none; }
+    .reveal-panel.show { display:block; }
+
+    /* Stage 3 — full-width charts */
+    #stage-3.stage-panel { padding-left: 0; padding-right: 0; }
+    #stage-3 .card { border-radius: 0; border-left: none; border-right: none; padding-left: 0; padding-right: 0; }
+    /* re-apply side padding to every element inside stage-3 cards EXCEPT the chart divs */
+    #stage-3 .card-title, #stage-3 .eq-display, #stage-3 .eq-note,
+    #stage-3 .pgv-row, #stage-3 .int-btn, #stage-3 .info-box,
+    #stage-3 .metrics-bar, #stage-3 .ctrl-lbl, #stage-3 p,
+    #stage-3 .row, #stage-3 .field { padding-left: 22px; padding-right: 22px; }
+
+    /* Stage 3 — Integration */
+    .eq-display {
+      font-size: 17px; font-weight: 700; color: var(--teal);
+      text-align: center; padding: 10px 0 4px;
+      letter-spacing: .03em;
+    }
+    .eq-note {
+      font-size: 12px; color: var(--ink3); text-align: center;
+      font-style: italic; margin-bottom: 8px; line-height: 1.5;
+    }
+    .int-btn {
+      width: 100%; padding: 10px 16px; margin-top: 10px;
+      background: var(--teal); color: white; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: Arial, Helvetica, sans-serif;
+      transition: background .15s;
+    }
+    .int-btn:hover { background: #125c63; }
+    .int-btn:disabled { background: #b0b8b8; cursor: not-allowed; }
+    .pgv-row { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    .pgv-row label { font-size:12px; color:var(--ink2); font-weight:600; }
+    .pgv-row input { width:90px; padding:5px 8px; border:1.5px solid var(--rule);
+      border-radius:6px; font-size:13px; font-family:Arial,Helvetica,sans-serif; background:var(--paper); }
+    .pgv-row input:focus { outline:none; border-color:var(--teal); }
+    .metrics-bar { display:flex; gap:10px; margin-top:10px; }
+    .metric-chip { flex:1; background:var(--surface2); border-radius:6px;
+      padding:8px 10px; text-align:center; }
+    .metric-chip .mv { font-size:18px; font-weight:700; color:var(--ink); }
+    .metric-chip .ml { font-size:10px; color:var(--ink3); margin-top:2px; }
+    hr.div { border:none; border-top:1px solid var(--rule); margin:8px 0; }
+
+    /* Q-block */
+    .q-label { font-size:12.5px; font-weight:600; color:var(--ink2); margin-bottom:5px; line-height:1.4; }
+    .q-num { width:100%; padding:6px 10px; border:1.5px solid var(--rule);
+      border-radius:6px; font-size:13px; background:var(--paper);
+      color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+    .q-num:focus { outline:none; border-color:var(--teal); background:white; }
+    .q-fb { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:4px;
+      margin-top:4px; display:inline-block; }
+    .q-fb.correct { background:#E8F5E9; color:#2E7D32; }
+    .q-fb.close   { background:#FFF8DB; color:#7a6000; }
+    .q-fb.far     { background:var(--ember-s); color:var(--ember); }
+    .ans-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+    .ans-box { background:var(--surface2); border-radius:6px; padding:8px 10px; }
+    .ans-box .lbl { font-size:10px; color:var(--ink3); margin-bottom:5px; }
+    .your-true { display:flex; flex-direction:column; gap:3px; font-size:12px; }
+    .yt-your { color:var(--ink2); }
+    .yt-true { color:var(--ink3); }
+  </style>
+</head>
+<body>
+
+<!-- FYRE header -->
+<header class="fyre-bar">
+  <div class="fyre-mark">
+    <img src="design-system/assets/FYRE_Artwork.png" class="fyre-logo" alt="FYRE">
+    <div>
+      <span class="wm">FYRE</span>
+      <div class="course">Engineering Against Natural Disasters &nbsp;·&nbsp; Lehigh University</div>
+    </div>
+  </div>
+  <span class="fyre-tag">Week 3 · Ground Motion Explorer</span>
+</header>
+
+<!-- Tabs -->
+<nav class="stage-tabs">
+  <button class="stage-tab active" onclick="showStage(1)">
+    <span class="stage-num">1</span> Explore a Motion
+  </button>
+  <button class="stage-tab" onclick="showStage(2)">
+    <span class="stage-num">2</span> Compare Two Records
+  </button>
+  <button class="stage-tab" onclick="showStage(3)">
+    <span class="stage-num">3</span> Integrate
+  </button>
+</nav>
+
+<div class="app">
+
+<!-- ══════════════════════════════════════════════════════════
+     STAGE 1
+════════════════════════════════════════════════════════════ -->
+<div id="stage-1" class="stage-panel active">
+  <div class="row">
+
+    <!-- LEFT: parameters -->
+    <div style="flex:0 0 270px">
+      <div class="card">
+        <div class="card-title">Earthquake Parameters</div>
+        <div class="field" style="margin-bottom:9px">
+          <div class="ctrl-lbl">City / Region</div>
+          <select id="s1-city">
+            <option value="memphis">Memphis, TN (CEUS — New Madrid fault)</option>
+            <option value="losangeles">Los Angeles, CA (near fault)</option>
+            <option value="seattle">Seattle, WA (subduction zone)</option>
+            <option value="charleston">Charleston, SC (CEUS — historical)</option>
+            <option value="newyork">New York City (low seismicity)</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:9px">
+          <div class="ctrl-lbl">Soil Class</div>
+          <select id="s1-soil">
+            <option value="rock">Rock  (Vs30 = 760 m/s — hard, fast, broad)</option>
+            <option value="stiff" selected>Stiff Soil  (Vs30 = 260 m/s — typical urban)</option>
+            <option value="soft">Soft Soil  (Vs30 = 180 m/s — slow, sustained)</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:9px">
+          <div class="ctrl-lbl">Return Period</div>
+          <select id="s1-rp">
+            <option value="50">50 years  (common event — often felt)</option>
+            <option value="100" selected>100 years  (design basis)</option>
+            <option value="1000">1000 years  (rare, severe)</option>
+            <option value="2500">2500 years  (MCE — worst credible)</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:9px">
+          <div class="ctrl-lbl">Duration</div>
+          <select id="s1-dur">
+            <option value="short">Short  (8 – 15 s)</option>
+            <option value="moderate" selected>Moderate  (18 – 30 s)</option>
+            <option value="long">Long  (35 – 55 s)</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <div class="ctrl-lbl">Random Seed</div>
+          <input type="number" id="s1-seed" value="42" min="1" max="9999">
+          <div style="font-size:11px;color:var(--ink3);line-height:1.5;margin-top:4px">
+            💡 Change this number to generate a different time history that still meets all the parameters above. Each seed gives a unique realisation of the same scenario.
+          </div>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="s1Generate()">
+          ⚡ Generate Ground Motion
+        </button>
+      </div>
+
+      <!-- Guess card -->
+      <div class="card" id="s1-guess-card" style="margin-top:12px;display:none">
+        <div class="card-title">Your Estimate</div>
+        <p style="font-size:12px;color:var(--ink2);margin-bottom:8px">
+          Read the y-axis. What is the largest acceleration (in g)?
+        </p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <input type="number" id="s1-guess" placeholder="e.g. 0.45"
+                 step="0.01" min="0" max="10" style="width:100px;flex:none"
+                 oninput="document.getElementById('s1-check-btn').disabled=!this.value.trim()">
+          <span style="font-size:13px;color:var(--ink3)">g</span>
+          <button id="s1-check-btn" class="btn btn-teal btn-sm"
+                  onclick="s1Check()" disabled>Check</button>
+        </div>
+        <div id="s1-verdict" class="verdict"></div>
+        <div id="s1-stats" class="stats-grid" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: chart -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="card-title" style="margin:0" id="s1-chart-title">Ground Acceleration — Time History</div>
+          <div id="s1-badge"></div>
+        </div>
+        <div id="s1-chart" style="height:310px"></div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:5px;text-align:center">
+          Zoom in with the toolbar · Hover to read exact values
+        </div>
+      </div>
+      <div class="card" id="s1-obs-card" style="display:none">
+        <div class="card-title">What do you observe?</div>
+        <div class="row" style="gap:10px">
+          <div class="col">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:4px">
+              How long does the strongest shaking last?</div>
+            <input class="obs-input" placeholder="e.g. about 8 seconds...">
+          </div>
+          <div class="col">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:4px">
+              Does the signal oscillate quickly or slowly?</div>
+            <input class="obs-input" placeholder="e.g. quick cycles, roughly 4 per second...">
+          </div>
+          <div class="col">
+            <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:4px">
+              Where in time does the strongest shaking appear?</div>
+            <input class="obs-input" placeholder="e.g. mostly in the first 5 seconds...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STAGE 2
+════════════════════════════════════════════════════════════ -->
+<div id="stage-2" class="stage-panel">
+
+  <!-- Header card -->
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div class="card-title" style="margin-bottom:6px">Same PGA — Different Everything Else</div>
+        <p style="font-size:13px;color:var(--ink2);line-height:1.6">
+          Both records below have <strong>identical peak ground acceleration</strong>.
+          They differ in frequency content, duration, and how the shaking builds up and fades.
+          Study both carefully before answering the questions below.
+        </p>
+      </div>
+      <div style="flex:0 0 auto;text-align:center">
+        <div class="pga-match-badge" id="s2-pga-badge">PGA A = PGA B = —</div>
+        <div style="margin-top:10px">
+          <button class="btn btn-primary" onclick="s2Generate()">
+            🎲 Generate Two Records
+          </button>
+        </div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:6px">
+          Each click loads a different pair
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record A -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="card-title" style="margin:0;color:#1565C0">Record A</div>
+      <div id="s2-badge-a" style="font-size:11px;color:var(--ink3)"></div>
+    </div>
+    <div id="s2-chart-a" style="height:220px"></div>
+  </div>
+
+  <!-- Record B -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="card-title" style="margin:0;color:#C62828">Record B</div>
+      <div id="s2-badge-b" style="font-size:11px;color:var(--ink3)"></div>
+    </div>
+    <div id="s2-chart-b" style="height:220px"></div>
+  </div>
+
+  <!-- Observation panel — 8 questions -->
+  <div class="card">
+    <div class="card-title">Record Your Observations</div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:14px;line-height:1.5">
+      Answer all questions below before pressing <em>See Answers</em>.
+      Questions 1–6 will be marked based on how close your answer is to the true value.
+      Question 7 gates the reveal — write something before you can see the answers.
+    </div>
+
+    <!-- Q1 Q2 — PGA -->
+    <div class="row" style="gap:12px;margin-bottom:12px">
+      <div class="col">
+        <div class="q-label"><strong>Q1.</strong> Peak ground acceleration of <span style="color:#1565C0">Record A</span> (g)</div>
+        <input type="number" class="q-num" id="q1" step="0.01" min="0" max="5" placeholder="e.g. 0.40">
+      </div>
+      <div class="col">
+        <div class="q-label"><strong>Q2.</strong> Peak ground acceleration of <span style="color:#C62828">Record B</span> (g)</div>
+        <input type="number" class="q-num" id="q2" step="0.01" min="0" max="5" placeholder="e.g. 0.40">
+      </div>
+    </div>
+
+    <!-- Q3 Q4 — Duration -->
+    <div class="row" style="gap:12px;margin-bottom:12px">
+      <div class="col">
+        <div class="q-label"><strong>Q3.</strong> Duration of <span style="color:#1565C0">Record A</span> (seconds)</div>
+        <input type="number" class="q-num" id="q3" step="1" min="0" max="120" placeholder="e.g. 14">
+      </div>
+      <div class="col">
+        <div class="q-label"><strong>Q4.</strong> Duration of <span style="color:#C62828">Record B</span> (seconds)</div>
+        <input type="number" class="q-num" id="q4" step="1" min="0" max="120" placeholder="e.g. 18">
+      </div>
+    </div>
+
+    <!-- Q5 Q6 — Peaks -->
+    <div class="row" style="gap:12px;margin-bottom:12px">
+      <div class="col">
+        <div class="q-label"><strong>Q5.</strong> Approximate number of visible peaks in <span style="color:#1565C0">Record A</span></div>
+        <input type="number" class="q-num" id="q5" step="1" min="0" max="500" placeholder="count the spikes">
+      </div>
+      <div class="col">
+        <div class="q-label"><strong>Q6.</strong> Approximate number of visible peaks in <span style="color:#C62828">Record B</span></div>
+        <input type="number" class="q-num" id="q6" step="1" min="0" max="500" placeholder="count the spikes">
+      </div>
+    </div>
+
+    <!-- Q7 — descriptive, gates reveal -->
+    <div style="margin-bottom:12px">
+      <div class="q-label"><strong>Q7.</strong> What is different about the shapes of these two records? <em style="color:var(--ember)">(write something to unlock the answers)</em></div>
+      <textarea id="q7" rows="3"
+        style="width:100%;padding:8px 10px;border:1.5px solid var(--rule);border-radius:6px;font-size:13px;font-family:Arial,Helvetica,sans-serif;resize:vertical;background:var(--paper);color:var(--ink)"
+        oninput="document.getElementById('s2-reveal-btn').disabled=!this.value.trim()"
+        placeholder="Describe differences in shape, how fast the signal oscillates, where the largest spikes appear, how quickly it builds up or fades away..."></textarea>
+    </div>
+
+    <button class="btn btn-teal" id="s2-reveal-btn" onclick="s2Reveal()" disabled>
+      See Answers →
+    </button>
+
+    <!-- Reveal -->
+    <div class="reveal-panel" id="s2-reveal">
+      <hr class="div" style="margin-top:14px">
+      <div id="s2-reveal-content"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     STAGE 3 — Integration: a → v → d
+════════════════════════════════════════════════════════════ -->
+<div id="stage-3" class="stage-panel">
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">Load a Ground Motion</div>
+    <div class="row" style="align-items:flex-end;gap:12px">
+      <div class="col field">
+        <div class="ctrl-lbl">Scenario</div>
+        <select id="s3-scenario">
+          <option value="memphis">Memphis, TN — Soft Soil (M7.5)</option>
+          <option value="losangeles">Los Angeles, CA — Near Fault (M6.7)</option>
+          <option value="seattle">Seattle, WA — Subduction (M6.5)</option>
+          <option value="nearfault">Near-Fault Pulse (M6.8)</option>
+          <option value="distant">Far-Field Large Event (M8.0)</option>
+        </select>
+      </div>
+      <div style="flex:0 0 130px" class="field">
+        <div class="ctrl-lbl">Seed</div>
+        <input type="number" id="s3-seed" value="42" min="1" max="9999">
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="btn btn-primary" onclick="s3Load()">⚡ Load</button>
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:10px;font-size:12px">
+      In this activity you will transform the <strong>acceleration</strong> record into
+      <strong>velocity</strong> and then into <strong>displacement</strong> — one integration at a time.
+      Each integration is simply calculating the area under the curve.
+    </div>
+  </div>
+
+  <!-- Acceleration -->
+  <div class="card" id="s3-acc-card" style="display:none">
+    <div class="card-title" style="color:var(--teal)">Step 1 — Acceleration  a(t)</div>
+    <div id="s3-acc-chart" style="height:240px"></div>
+    <div class="pgv-row" style="margin-top:8px">
+      <label>Your estimate of PGA:</label>
+      <input type="number" id="s3-pga-guess" step="0.01" placeholder="e.g. 0.45">
+      <span style="font-size:13px;color:var(--ink3)">g</span>
+      <button class="btn btn-outline btn-sm" onclick="s3CheckPGA()">Check</button>
+      <div id="s3-pga-fb"></div>
+    </div>
+    <button class="int-btn" id="s3-int1-btn" onclick="s3Int1()">
+      ∫ &nbsp; Integrate  a(t)  to get velocity  v(t)  →
+    </button>
+  </div>
+
+  <!-- Velocity -->
+  <div class="card" id="s3-vel-card" style="display:none">
+    <div class="eq-display">v(t) &nbsp;=&nbsp; ∫₀ᵗ a(τ) dτ</div>
+    <div class="eq-note">
+      The velocity at any moment equals the total area under the acceleration curve up to that point.<br>
+      It tells you how fast the ground is moving — not how much it has shaken.
+    </div>
+    <div class="card-title" style="color:var(--ember)">Step 2 — Velocity  v(t)</div>
+    <div id="s3-vel-chart" style="height:240px"></div>
+    <div class="pgv-row" style="margin-top:8px">
+      <label>Your estimate of PGV:</label>
+      <input type="number" id="s3-pgv-guess" step="1" placeholder="e.g. 30">
+      <span style="font-size:13px;color:var(--ink3)">cm/s</span>
+      <button class="btn btn-outline btn-sm" onclick="s3CheckPGV()">Check</button>
+      <div id="s3-pgv-fb"></div>
+    </div>
+    <button class="int-btn" id="s3-int2-btn" onclick="s3Int2()" style="background:var(--ember)">
+      ∫ &nbsp; Integrate  v(t)  to get displacement  d(t)  →
+    </button>
+  </div>
+
+  <!-- Displacement -->
+  <div class="card" id="s3-disp-card" style="display:none">
+    <div class="eq-display">d(t) &nbsp;=&nbsp; ∫₀ᵗ v(τ) dτ</div>
+    <div class="eq-note">
+      The displacement shows how far the ground actually moved from its original position.<br>
+      A large displacement means the ground shifted significantly — even if the shaking felt brief.
+    </div>
+    <div class="card-title" style="color:#1565C0">Step 3 — Displacement  d(t)</div>
+    <div id="s3-disp-chart" style="height:240px"></div>
+    <div class="pgv-row" style="margin-top:8px">
+      <label>Your estimate of PGD:</label>
+      <input type="number" id="s3-pgd-guess" step="0.1" placeholder="e.g. 5">
+      <span style="font-size:13px;color:var(--ink3)">cm</span>
+      <button class="btn btn-outline btn-sm" onclick="s3CheckPGD()">Check</button>
+      <div id="s3-pgd-fb"></div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="card" id="s3-summary" style="display:none">
+    <div class="card-title">Summary — Three Measures of Ground Motion</div>
+    <div class="metrics-bar">
+      <div class="metric-chip">
+        <div class="mv" id="s3-sum-pga">—</div>
+        <div class="ml">PGA (g) — Acceleration</div>
+      </div>
+      <div class="metric-chip">
+        <div class="mv" id="s3-sum-pgv">—</div>
+        <div class="ml">PGV (cm/s) — Velocity</div>
+      </div>
+      <div class="metric-chip">
+        <div class="mv" id="s3-sum-pgd">—</div>
+        <div class="ml">PGD (cm) — Displacement</div>
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:10px;font-size:12px;line-height:1.6">
+      PGA tells you about the maximum force applied to stiff structures.
+      PGV is often a better indicator of damage to medium-height buildings.
+      PGD matters most for long flexible structures and anything resting directly on the ground surface — like bridges or pipelines.
+      Seismic engineers use all three depending on the structure they are designing.
+    </div>
+  </div>
+
+</div>
+</div><!-- app -->
+
+<script>
+const PI2 = 2 * Math.PI;
+const DT  = 0.01;
+
+// ── City base parameters ──────────────────────────────────────────────────
+const CITIES = {
+  memphis:    { label:'Memphis, TN',     f_base:2.0, pga_100:0.42 },
+  losangeles: { label:'Los Angeles, CA', f_base:4.5, pga_100:0.55 },
+  seattle:    { label:'Seattle, WA',     f_base:3.0, pga_100:0.32 },
+  charleston: { label:'Charleston, SC',  f_base:2.5, pga_100:0.26 },
+  newyork:    { label:'New York City',   f_base:3.5, pga_100:0.11 },
+};
+const SOILS = {
+  rock:  { f_factor:1.35, zeta:0.60, pga_factor:0.90, label:'Rock' },
+  stiff: { f_factor:1.00, zeta:0.45, pga_factor:1.00, label:'Stiff Soil' },
+  soft:  { f_factor:0.60, zeta:0.28, pga_factor:1.50, label:'Soft Soil' },
+};
+const RP_MULT = { '50':0.55, '100':1.0, '1000':2.1, '2500':3.0 };
+const DUR_RANGES = { short:[8,15], moderate:[18,30], long:[35,55] };
+
+// ── Envelope shapes ───────────────────────────────────────────────────────
+function envelope(t, shape, T) {
+  switch(shape) {
+    case 'frontloaded': {
+      const t1=0.04*T, t2=0.30*T;
+      if(t<t1) return (t/Math.max(t1,1e-9))**1.5;
+      if(t<t2) return 1.0;
+      return Math.exp(-5.5*(t-t2)/Math.max(T-t2,1e-9));
+    }
+    case 'backloaded': {
+      const t1=0.45*T, t2=0.90*T;
+      if(t<t1) return (t/Math.max(t1,1e-9))**2.5;
+      if(t<t2) return 1.0;
+      return Math.exp(-2.5*(t-t2)/Math.max(T-t2,1e-9));
+    }
+    case 'doublepeak': {
+      const p1=0.28*T, p2=0.68*T, sig=0.08*T;
+      return Math.exp(-0.5*((t-p1)/sig)**2) + 0.80*Math.exp(-0.5*((t-p2)/sig)**2);
+    }
+    default: { // standard
+      const t1=0.15*T, t2=0.80*T;
+      if(t<t1) return (t/Math.max(t1,1e-9))**2;
+      if(t<t2) return 1.0;
+      return Math.exp(-3.0*(t-t2)/Math.max(T-t2,1e-9));
+    }
+  }
+}
+
+// ── KT generator ─────────────────────────────────────────────────────────
+function ktGenerate(duration, dt, omega_g, zeta_g, seed, envShape) {
+  let s = seed & 0xffffffff;
+  function rng() {
+    s = (Math.imul(s,1664525)+1013904223)|0;
+    return ((s>>>16)/65535 - 0.5)*2;
+  }
+  const N = Math.floor(duration/dt);
+  const acc = new Float64Array(N);
+  let x=0, v=0;
+  const og2 = omega_g*omega_g, twzog = 2*zeta_g*omega_g;
+  for(let i=1; i<N; i++) {
+    const a = -og2*x - twzog*v + rng()*og2;
+    v += a*dt; x += v*dt; acc[i] = a;
+  }
+  const t_arr = new Float64Array(N);
+  for(let i=0; i<N; i++) {
+    t_arr[i] = i*dt;
+    acc[i] *= envelope(t_arr[i], envShape, duration);
+  }
+  return { t: Array.from(t_arr), acc: Array.from(acc) };
+}
+
+function scaleMotion(motion, targetPGA) {
+  const peak = motion.acc.reduce((m,v) => Math.max(m,Math.abs(v)), 0);
+  const factor = targetPGA / Math.max(peak, 1e-9);
+  return motion.acc.map(a => a*factor);
+}
+
+// ── Common Plotly helpers ─────────────────────────────────────────────────
+const PLOT_CFG = { responsive:true, displayModeBar:true, displaylogo:false,
+  modeBarButtonsToRemove:['lasso2d','select2d'] };
+
+function baseLayout(ymax) {
+  return {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'#FAF9F6',
+    margin:{t:10,r:10,b:48,l:58},
+    xaxis:{title:{text:'Time (s)',font:{size:12}}, gridcolor:'#D5E1E0', zeroline:false},
+    yaxis:{title:{text:'Acceleration (g)',font:{size:12}}, gridcolor:'#D5E1E0',
+           zeroline:true, zerolinecolor:'#bbb', zerolinewidth:1,
+           range:[-ymax,ymax]},
+    font:{family:'Arial,Helvetica,sans-serif', size:12, color:'#19313F'},
+    hovermode:'x unified',
+  };
+}
+
+// ── Init placeholders ─────────────────────────────────────────────────────
+function placeholder(divId) {
+  Plotly.newPlot(divId,[],{
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'#F0F5F4',
+    margin:{t:10,r:10,b:48,l:58},
+    xaxis:{title:{text:'Time (s)'}}, yaxis:{title:{text:'Acc (g)'}},
+    annotations:[{text:'Press ⚡ Generate', showarrow:false,
+      xref:'paper',yref:'paper',x:.5,y:.5,font:{size:13,color:'#52636B'}}],
+  },PLOT_CFG);
+}
+placeholder('s1-chart');
+placeholder('s2-chart-a');
+placeholder('s2-chart-b');
+
+// ══════════════════════════════════════════════════════════════════════════
+//  STAGE 1
+// ══════════════════════════════════════════════════════════════════════════
+let s1acc=null, s1pga=null;
+
+function s1Generate() {
+  const city   = document.getElementById('s1-city').value;
+  const soil   = document.getElementById('s1-soil').value;
+  const rp     = document.getElementById('s1-rp').value;
+  const durKey = document.getElementById('s1-dur').value;
+  const seed   = parseInt(document.getElementById('s1-seed').value)||42;
+  const c = CITIES[city], so = SOILS[soil];
+  const [dMin,dMax] = DUR_RANGES[durKey];
+  const dur = dMin + ((seed * 137 + 29) % 1000) / 1000 * (dMax-dMin);
+
+  // Envelope is always randomly chosen from seed
+  const envOpts = ['standard','frontloaded','backloaded','doublepeak'];
+  const envSh   = envOpts[seed % envOpts.length];
+
+  const omega_g = PI2 * c.f_base * so.f_factor;
+  const zeta_g  = so.zeta;
+  const pga     = Math.min(
+    c.pga_100 * RP_MULT[rp] * so.pga_factor,
+    2.5  // hard physics cap
+  );
+
+  const raw = ktGenerate(dur, DT, omega_g, zeta_g, seed, envSh);
+  s1acc = scaleMotion(raw, pga);
+  s1pga = pga;
+
+  const ymax = pga * 1.15;
+  const envLabels = {standard:'Standard envelope',frontloaded:'Front-loaded',
+                     backloaded:'Back-loaded',doublepeak:'Double-peak'};
+  const trace = {
+    x: raw.t, y: s1acc, type:'scatter', mode:'lines',
+    line:{color:'#176F78', width:1.4}, name:'Acceleration (g)',
+    hovertemplate:'t=%{x:.2f}s  a=%{y:.4f}g<extra></extra>',
+  };
+
+  const layout = baseLayout(ymax);
+  layout.title = { text: `${c.label}  ·  ${so.label}  ·  RP ${rp} yr  ·  ${envLabels[envSh]}`,
+    font:{size:12,color:'#19313F'}, x:0.01 };
+  Plotly.newPlot('s1-chart',[trace],layout,PLOT_CFG);
+
+  document.getElementById('s1-chart-title').textContent =
+    c.label+' — '+so.label+' — '+rp+'-year return period';
+  document.getElementById('s1-badge').innerHTML =
+    `<span style="font-size:11px;color:var(--ink3)">${envLabels[envSh]}  ·  ${dur.toFixed(0)} s</span>`;
+
+  // Show cards
+  document.getElementById('s1-guess-card').style.display='block';
+  document.getElementById('s1-obs-card').style.display='block';
+  document.getElementById('s1-guess').value='';
+  document.getElementById('s1-check-btn').disabled=true;
+  document.getElementById('s1-verdict').style.display='none';
+  document.getElementById('s1-stats').style.display='none';
+}
+
+function s1Check() {
+  if(!s1acc){ alert('Generate a motion first.'); return; }
+  const guess = parseFloat(document.getElementById('s1-guess').value);
+  if(isNaN(guess)) return;
+  const err = Math.abs(guess - s1pga) / s1pga;
+  const v = document.getElementById('s1-verdict');
+  v.style.display='block';
+  if(err<0.08)      { v.className='verdict correct'; v.textContent=`✓  Excellent! True PGA = ${s1pga.toFixed(3)} g  (your error: ${(err*100).toFixed(0)}%)`; }
+  else if(err<0.20) { v.className='verdict close';   v.textContent=`≈  Close. True PGA = ${s1pga.toFixed(3)} g  (your error: ${(err*100).toFixed(0)}%)`; }
+  else              { v.className='verdict far';     v.textContent=`✗  Not quite. True PGA = ${s1pga.toFixed(3)} g  (your error: ${(err*100).toFixed(0)}%)`; }
+
+  // Stats
+  document.getElementById('s1-stats').style.display='grid';
+  document.getElementById('s1-stats').innerHTML=`
+    <div class="stat-box" style="grid-column:1/-1">
+      <div class="stat-val">${s1pga.toFixed(3)} g</div>
+      <div class="stat-lbl">True Peak Ground Acceleration</div>
+    </div>`;
+
+  // Add PGA lines to chart
+  const ymax = s1pga*1.15;
+  Plotly.relayout('s1-chart',{
+    shapes:[
+      {type:'line',x0:0,x1:s1acc.length*DT,y0:s1pga, y1:s1pga, line:{dash:'dash',color:'#C62828',width:1.5}},
+      {type:'line',x0:0,x1:s1acc.length*DT,y0:-s1pga,y1:-s1pga,line:{dash:'dash',color:'#C62828',width:1.5}},
+    ],
+    annotations:[{x:s1acc.length*DT*0.97,y:s1pga+ymax*0.06,
+      text:`PGA = ${s1pga.toFixed(3)} g`,
+      showarrow:false,font:{color:'#C62828',size:11},xanchor:'right'}],
+    'yaxis.range':[-ymax,ymax],
+  });
+}
+
+// ── Peak counting (significant peaks above threshold) ─────────────────────
+function countPeaks(acc, pga) {
+  const thr = 0.08 * pga;  // count peaks above 8% of PGA
+  let cnt = 0;
+  for(let i=1;i<acc.length-1;i++){
+    if(acc[i]>acc[i-1]&&acc[i]>acc[i+1]&&acc[i]>thr) cnt++;
+    if(acc[i]<acc[i-1]&&acc[i]<acc[i+1]&&acc[i]<-thr) cnt++;
+  }
+  return cnt;
+}
+
+// ── Proximity feedback ────────────────────────────────────────────────────
+function proxFeedback(guess, truth, pctTol) {
+  if(isNaN(guess)||guess===''||guess===null) return null;
+  const err = Math.abs(guess-truth)/Math.max(Math.abs(truth),0.001);
+  if(err <= pctTol*0.5) return {cls:'correct', txt:`✓  True value: ${truth.toFixed(truth<5?2:0)} — excellent!`};
+  if(err <= pctTol)     return {cls:'close',   txt:`≈  True value: ${truth.toFixed(truth<5?2:0)} — close`};
+  return                       {cls:'far',     txt:`✗  True value: ${truth.toFixed(truth<5?2:0)}`};
+}
+
+// ── Absolute PGA tolerance for Q1/Q2 (±0.02 g correct, ±0.05 g close) ───
+function pgaFb(id, truth) {
+  const raw = document.getElementById(id) ? document.getElementById(id).value.trim() : '';
+  const g   = parseFloat(raw);
+  const fmt = v => v.toFixed(2);
+  const trueStr = fmt(truth) + ' g';
+  if(!raw) return `<div class="your-true">
+    <span class="yt-your">Your answer: <em style="color:#bbb">not answered</em></span>
+    <span class="yt-true">True value: <strong>${trueStr}</strong></span>
+  </div>`;
+  const diff = Math.abs(g - truth);
+  let colour, icon;
+  if(diff <= 0.02)      { colour='#2E7D32';       icon='✓'; }
+  else if(diff <= 0.05) { colour='#7a6000';        icon='≈'; }
+  else                  { colour='var(--ember)';   icon='✗'; }
+  return `<div class="your-true">
+    <span class="yt-your">Your answer: <strong style="color:${colour}">${fmt(g)} g ${icon}</strong></span>
+    <span class="yt-true">True value: <strong>${trueStr}</strong></span>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  STAGE 2 — Curated pairs
+// ══════════════════════════════════════════════════════════════════════════
+
+// All pairs share PGA = 0.40 g for clean comparison
+// Pairs: same PGA within each pair, different PGA across pairs.
+// All durations ≤ 10 s; peak counts target double digits (10–60).
+// omega_g kept ≤ 3 Hz so peaks are individually countable on screen.
+const S2_PAIRS = [
+  {
+    pga: 0.12,
+    explain:'Both records have the same maximum peak (same PGA), but one oscillates slowly and keeps going steadily for the full duration, while the other completes its most intense shaking in the first few seconds and then quickly fades away. The number of peaks you can count per second is also different.',
+    A:{ omega_g:PI2*1.5, zeta_g:0.30, dur:10, envSh:'standard',    seed:42 },
+    B:{ omega_g:PI2*2.5, zeta_g:0.25, dur: 8, envSh:'frontloaded', seed:77 },
+  },
+  {
+    pga: 0.50,
+    explain:'Both records reach the same maximum acceleration. One has a fairly steady rhythm of peaks spread evenly across its duration. The other oscillates noticeably faster — more peaks arrive per second — and the shaking is a little shorter overall.',
+    A:{ omega_g:PI2*2.0, zeta_g:0.35, dur:10, envSh:'standard', seed:55 },
+    B:{ omega_g:PI2*3.0, zeta_g:0.30, dur: 8, envSh:'standard', seed:33 },
+  },
+  {
+    pga: 0.70,
+    explain:'Same maximum peak, very different patterns. One record delivers all of its strongest shaking right at the start — a rapid burst that fades quickly. The other has two distinct clusters of strong shaking with a calmer section in between, almost like two events happening back to back.',
+    A:{ omega_g:PI2*2.5, zeta_g:0.25, dur: 8, envSh:'frontloaded', seed:17 },
+    B:{ omega_g:PI2*2.0, zeta_g:0.25, dur:10, envSh:'doublepeak',  seed:99 },
+  },
+  {
+    pga: 0.25,
+    explain:'These two records were generated from the exact same random sequence — only the shape of how the shaking builds and fades is different. One starts quietly and builds to its strongest point late in the record. The other hits hardest right at the beginning. Look carefully at where the large peaks appear.',
+    A:{ omega_g:PI2*2.0, zeta_g:0.30, dur:10, envSh:'backloaded',  seed:42 },
+    B:{ omega_g:PI2*2.0, zeta_g:0.30, dur:10, envSh:'frontloaded', seed:42 },
+  },
+  {
+    pga: 0.40,
+    explain:'Same maximum peak. One record is slow and sustained — each oscillation takes a noticeable amount of time and the shaking continues steadily. The other is much faster per oscillation but also shorter overall. Counting peaks in the first five seconds of each should reveal a clear difference.',
+    A:{ omega_g:PI2*1.5, zeta_g:0.28, dur:10, envSh:'standard',    seed:66 },
+    B:{ omega_g:PI2*3.0, zeta_g:0.22, dur: 7, envSh:'frontloaded', seed:77 },
+  },
+  {
+    pga: 0.60,
+    explain:'Both records oscillate at the same speed and start with the same burst of energy. What is different is how the shaking evolves afterwards: one quietens down rapidly after the initial burst, while the other produces a second burst of strong shaking later in the record.',
+    A:{ omega_g:PI2*2.5, zeta_g:0.25, dur: 6, envSh:'frontloaded', seed:17 },
+    B:{ omega_g:PI2*2.5, zeta_g:0.25, dur:10, envSh:'doublepeak',  seed:17 },
+  },
+];
+
+let s2PairIdx = -1;
+let _s2mA = null, _s2mB = null, _s2pair = null;
+
+function s2Generate() {
+  s2PairIdx = (s2PairIdx + 1) % S2_PAIRS.length;
+  const pair = S2_PAIRS[s2PairIdx];
+
+  // Both A and B share the same PGA for this pair — differences lie elsewhere
+  function makeMot(p) {
+    const raw = ktGenerate(p.dur, DT, p.omega_g, p.zeta_g, p.seed, p.envSh);
+    const acc = scaleMotion(raw, pair.pga);   // pair.pga is the shared PGA
+    return { t: raw.t, acc, dur: p.dur };
+  }
+
+  _s2mA = makeMot(pair.A);
+  _s2mB = makeMot(pair.B);
+  _s2pair = pair;
+
+  // Shared y-axis: both records have the same PGA so scale is identical
+  const tMax = Math.max(_s2mA.t[_s2mA.t.length-1], _s2mB.t[_s2mB.t.length-1]);
+  const ymax = pair.pga * 1.18;
+
+  function drawChart(divId, motion, color) {
+    const layout = baseLayout(ymax);
+    layout.xaxis.range = [0, tMax];
+    Plotly.newPlot(divId,[{
+      x:motion.t, y:motion.acc, type:'scatter', mode:'lines',
+      line:{color, width:1.4}, name:'Acceleration (g)',
+      hovertemplate:'t=%{x:.2f}s  a=%{y:.4f}g<extra></extra>',
+    }],layout,PLOT_CFG);
+  }
+
+  drawChart('s2-chart-a', _s2mA, '#1565C0');
+  drawChart('s2-chart-b', _s2mB, '#C62828');
+
+  // Hide badge — students discover differences themselves
+  document.getElementById('s2-badge-a').textContent = '';
+  document.getElementById('s2-badge-b').textContent = '';
+  document.getElementById('s2-pga-badge').textContent = 'Records loaded — study the plots and answer the questions below.';
+  document.getElementById('s2-pga-badge').style.background = 'var(--surface2)';
+  document.getElementById('s2-pga-badge').style.borderColor = 'var(--rule)';
+  document.getElementById('s2-pga-badge').style.color = 'var(--ink3)';
+
+  // Clear all inputs
+  ['q1','q2','q3','q4','q5','q6','q7'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  document.getElementById('s2-reveal-btn').disabled = true;
+  document.getElementById('s2-reveal').classList.remove('show');
+}
+
+function s2Reveal() {
+  if(!_s2pair || !_s2mA) return;
+  const pair  = _s2pair;
+  const pga   = pair.pga;           // same for both records in this pair
+  const durA  = _s2mA.dur, durB = _s2mB.dur;
+  const pkA   = countPeaks(_s2mA.acc, pga);
+  const pkB   = countPeaks(_s2mB.acc, pga);
+  const rateA = (pkA / durA).toFixed(1);
+  const rateB = (pkB / durB).toFixed(1);
+
+  // "Your answer vs True value" display
+  function fb(id, truth, pct, unit) {
+    unit = unit || '';
+    const raw  = document.getElementById(id) ? document.getElementById(id).value.trim() : '';
+    const g    = parseFloat(raw);
+    const fmt  = v => Number.isInteger(v) ? String(v) : v.toFixed(2);
+    const trueStr = fmt(truth) + (unit ? ' ' + unit : '');
+    if(!raw) return `<div class="your-true">
+      <span class="yt-your">Your answer: <em style="color:#bbb">not answered</em></span>
+      <span class="yt-true">True value: <strong>${trueStr}</strong></span>
+    </div>`;
+    const r = proxFeedback(g, truth, pct);
+    const icon = r ? (r.cls==='correct'?'✓':r.cls==='close'?'≈':'✗') : '';
+    const colour = r ? (r.cls==='correct'?'#2E7D32':r.cls==='close'?'#7a6000':'var(--ember)') : 'var(--ink3)';
+    return `<div class="your-true">
+      <span class="yt-your">Your answer: <strong style="color:${colour}">${fmt(g)}${unit?' '+unit:''} ${icon}</strong></span>
+      <span class="yt-true">True value: <strong>${trueStr}</strong></span>
+    </div>`;
+  }
+
+  // Q7 answer — plain observation language only, no jargon
+  const q7ans = `${pair.explain}<br><br>
+    <em>Key things to notice:</em><br>
+    <strong>Peak height (PGA):</strong> Both records reach ${pga.toFixed(3)} g —
+    the tallest spike on the y-axis is the same for both.<br><br>
+    <strong>How fast the signal oscillates:</strong>
+    Record A has roughly ${pkA} clearly visible peaks over ${durA} s —
+    about ${rateA} peaks per second.
+    Record B has roughly ${pkB} peaks over ${durB} s —
+    about ${rateB} peaks per second.
+    ${parseFloat(rateB) > parseFloat(rateA)*1.4
+      ? 'Record B oscillates noticeably faster — peaks are packed much closer together.'
+      : parseFloat(rateA) > parseFloat(rateB)*1.4
+      ? 'Record A oscillates noticeably faster — peaks are packed much closer together.'
+      : 'Both records oscillate at a broadly similar speed.'}<br><br>
+    <strong>Where the energy is concentrated:</strong>
+    Look at where the largest peaks appear in each record — right at the start,
+    near the end, spread evenly, or in two separate bursts?
+    This pattern shows <em>when</em> a structure would experience its greatest force.`;
+
+  document.getElementById('s2-reveal-content').innerHTML = `
+    <div class="ans-grid">
+      <div class="ans-box">
+        <div class="lbl">Q1 — PGA of Record A</div>
+        ${pgaFb('q1', pga)}
+      </div>
+      <div class="ans-box">
+        <div class="lbl">Q2 — PGA of Record B</div>
+        ${pgaFb('q2', pga)}
+      </div>
+      <div class="ans-box">
+        <div class="lbl">Q3 — Duration of Record A</div>
+        ${fb('q3', durA, 0.20, 's')}
+      </div>
+      <div class="ans-box">
+        <div class="lbl">Q4 — Duration of Record B</div>
+        ${fb('q4', durB, 0.20, 's')}
+      </div>
+      <div class="ans-box">
+        <div class="lbl">Q5 — Approx. peaks in A</div>
+        ${fb('q5', pkA, 0.40, 'peaks')}
+      </div>
+      <div class="ans-box">
+        <div class="lbl">Q6 — Approx. peaks in B</div>
+        ${fb('q6', pkB, 0.40, 'peaks')}
+      </div>
+    </div>
+    <div class="info-box" style="margin-top:12px">
+      <strong>Q7 — What is different about their shapes?</strong><br>${q7ans}
+    </div>
+    <div style="margin-top:12px;padding:12px 14px;background:#FFF8F0;border-left:3px solid var(--ember);border-radius:0 6px 6px 0;font-size:13px;line-height:1.7;color:var(--ink2)">
+      <strong>🔖 Weekly Reflection Assignment</strong><br>
+      Based on what you have observed today — the size of the peaks, how fast the signal
+      oscillates, and where the energy is concentrated — which of these two records do you
+      think would cause more damage to a real building? Does it depend on the type of
+      building? Write a short paragraph (5–8 sentences) explaining your reasoning.<br>
+      <em style="color:var(--ink3)">More on how ground motion characteristics connect to
+      building damage will be revealed in the next lesson.</em>
+    </div>`;
+  document.getElementById('s2-reveal').classList.add('show');
+}
+
+// Tab switch
+function showStage(n) {
+  document.querySelectorAll('.stage-panel').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.stage-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('stage-'+n).classList.add('active');
+  document.querySelectorAll('.stage-tab')[n-1].classList.add('active');
+  setTimeout(()=>window.dispatchEvent(new Event('resize')), 60);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  STAGE 3 — Integration: a(t) → v(t) → d(t)
+// ══════════════════════════════════════════════════════════════════════════
+
+// Scenario parameters for Stage 3
+const S3_SCENARIOS = {
+  memphis:    { omega_g:PI2*2.0, zeta_g:0.28, dur:20, pga:0.42, envSh:'standard'    },
+  losangeles: { omega_g:PI2*4.5, zeta_g:0.45, dur:15, pga:0.55, envSh:'frontloaded' },
+  seattle:    { omega_g:PI2*3.0, zeta_g:0.35, dur:25, pga:0.32, envSh:'backloaded'  },
+  nearfault:  { omega_g:PI2*2.5, zeta_g:0.30, dur:12, pga:0.65, envSh:'doublepeak'  },
+  distant:    { omega_g:PI2*1.5, zeta_g:0.25, dur:30, pga:0.18, envSh:'standard'    },
+};
+
+// State
+let _s3t=null, _s3acc_g=null, _s3acc_cms2=null, _s3vel=null, _s3disp=null;
+let _s3pga=null, _s3pgv=null, _s3pgd=null;
+
+// Trapezoidal integration
+function trapIntegrate(signal, dt) {
+  const out = new Array(signal.length).fill(0);
+  for(let i=1; i<signal.length; i++) {
+    out[i] = out[i-1] + 0.5*(signal[i-1]+signal[i])*dt;
+  }
+  return out;
+}
+
+// Baseline correction (remove mean drift)
+function demean(signal) {
+  const mean = signal.reduce((s,v)=>s+v,0)/signal.length;
+  return signal.map(v=>v-mean);
+}
+
+// Stage 3 chart helper
+function plotS3(divId, t, signal, yLabel, unit, color) {
+  const peak = signal.reduce((m,v)=>Math.max(m,Math.abs(v)),0);
+  const ymax = peak*1.18 || 1;
+  Plotly.newPlot(divId,[{
+    x:t, y:signal, type:'scatter', mode:'lines',
+    line:{color, width:1.4}, name:yLabel,
+    hovertemplate:'t=%{x:.2f}s  %{y:.3f} '+unit+'<extra></extra>',
+  }],{
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'#FAF9F6',
+    margin:{t:10,r:14,b:48,l:68},
+    xaxis:{title:{text:'Time (s)',font:{size:12}}, gridcolor:'#D5E1E0', zeroline:false},
+    yaxis:{title:{text:yLabel+' ('+unit+')',font:{size:12}},
+           gridcolor:'#D5E1E0', zeroline:true,
+           zerolinecolor:'#bbb', zerolinewidth:1,
+           range:[-ymax,ymax]},
+    font:{family:'Arial,Helvetica,sans-serif',size:12,color:'#19313F'},
+    hovermode:'x unified',
+  },PLOT_CFG);
+}
+
+// ── Feedback helper for Stage 3 checks ───────────────────────────────────
+function s3Fb(fbDivId, guess, truth, pctTol, fmtFn) {
+  const fb = document.getElementById(fbDivId);
+  if(isNaN(guess)) { fb.innerHTML=''; return; }
+  const err = Math.abs(guess-truth)/Math.max(Math.abs(truth),0.001);
+  const trueStr = fmtFn(truth);
+  if(err<=pctTol*0.5) { fb.className='q-fb correct'; fb.textContent='✓  True value: '+trueStr; }
+  else if(err<=pctTol){ fb.className='q-fb close';   fb.textContent='≈  Close — true value: '+trueStr; }
+  else                { fb.className='q-fb far';     fb.textContent='✗  True value: '+trueStr; }
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────
+function s3Load() {
+  const scenKey = document.getElementById('s3-scenario').value;
+  const seed    = parseInt(document.getElementById('s3-seed').value)||42;
+  const scen    = S3_SCENARIOS[scenKey];
+
+  const raw   = ktGenerate(scen.dur, DT, scen.omega_g, scen.zeta_g, seed, scen.envSh);
+  _s3acc_g    = scaleMotion(raw, scen.pga);       // in g
+  _s3acc_cms2 = _s3acc_g.map(a=>a*981);           // convert to cm/s²
+  _s3t        = raw.t;
+  _s3pga      = scen.pga;
+  _s3vel      = null; _s3disp = null;
+  _s3pgv      = null; _s3pgd  = null;
+
+  plotS3('s3-acc-chart', _s3t, _s3acc_g, 'Acceleration', 'g', '#176F78');
+
+  // Reset UI
+  document.getElementById('s3-acc-card').style.display  = 'block';
+  document.getElementById('s3-vel-card').style.display  = 'none';
+  document.getElementById('s3-disp-card').style.display = 'none';
+  document.getElementById('s3-summary').style.display   = 'none';
+  ['s3-pga-guess','s3-pgv-guess','s3-pgd-guess'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  ['s3-pga-fb','s3-pgv-fb','s3-pgd-fb'].forEach(id=>{
+    const el=document.getElementById(id); el.className=''; el.textContent='';
+  });
+  document.getElementById('s3-int1-btn').disabled = false;
+  document.getElementById('s3-acc-card').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Integrate a → v ───────────────────────────────────────────────────────
+function s3Int1() {
+  if(!_s3acc_cms2) return;
+  const vel_raw = trapIntegrate(_s3acc_cms2, DT);
+  _s3vel = demean(vel_raw);
+  _s3pgv = _s3vel.reduce((m,v)=>Math.max(m,Math.abs(v)),0);
+
+  plotS3('s3-vel-chart', _s3t, _s3vel, 'Velocity', 'cm/s', '#A33E1F');
+  document.getElementById('s3-vel-card').style.display = 'block';
+  document.getElementById('s3-int1-btn').disabled = true;
+  setTimeout(()=>document.getElementById('s3-vel-card')
+    .scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+
+// ── Integrate v → d ───────────────────────────────────────────────────────
+function s3Int2() {
+  if(!_s3vel) return;
+  const disp_raw = trapIntegrate(_s3vel, DT);
+  _s3disp = demean(disp_raw);
+  _s3pgd  = _s3disp.reduce((m,v)=>Math.max(m,Math.abs(v)),0);
+
+  plotS3('s3-disp-chart', _s3t, _s3disp, 'Displacement', 'cm', '#1565C0');
+  document.getElementById('s3-disp-card').style.display = 'block';
+  document.getElementById('s3-int2-btn').disabled = true;
+
+  // Populate and show summary
+  document.getElementById('s3-sum-pga').textContent = _s3pga.toFixed(3)+' g';
+  document.getElementById('s3-sum-pgv').textContent = _s3pgv.toFixed(1)+' cm/s';
+  document.getElementById('s3-sum-pgd').textContent = _s3pgd.toFixed(2)+' cm';
+  document.getElementById('s3-summary').style.display = 'block';
+  setTimeout(()=>document.getElementById('s3-disp-card')
+    .scrollIntoView({behavior:'smooth',block:'nearest'}),80);
+}
+
+// ── Individual check functions ────────────────────────────────────────────
+function s3CheckPGA() {
+  const guess = parseFloat(document.getElementById('s3-pga-guess').value);
+  if(!_s3pga||isNaN(guess)) return;
+  // Use absolute tolerance (same as pgaFb)
+  const fb = document.getElementById('s3-pga-fb');
+  const diff = Math.abs(guess-_s3pga);
+  if(diff<=0.02)      { fb.className='q-fb correct'; fb.textContent=`✓  True PGA = ${_s3pga.toFixed(3)} g`; }
+  else if(diff<=0.05) { fb.className='q-fb close';   fb.textContent=`≈  Close — true PGA = ${_s3pga.toFixed(3)} g`; }
+  else                { fb.className='q-fb far';     fb.textContent=`✗  True PGA = ${_s3pga.toFixed(3)} g`; }
+}
+
+function s3CheckPGV() {
+  const guess = parseFloat(document.getElementById('s3-pgv-guess').value);
+  if(!_s3pgv||isNaN(guess)) return;
+  s3Fb('s3-pgv-fb', guess, _s3pgv, 0.25, v=>v.toFixed(1)+' cm/s');
+}
+
+function s3CheckPGD() {
+  const guess = parseFloat(document.getElementById('s3-pgd-guess').value);
+  if(!_s3pgd||isNaN(guess)) return;
+  s3Fb('s3-pgd-fb', guess, _s3pgd, 0.30, v=>v.toFixed(2)+' cm');
+}
+</script>
+</body>
+</html>
