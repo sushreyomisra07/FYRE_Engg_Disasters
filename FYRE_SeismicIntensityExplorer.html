@@ -226,7 +226,7 @@
     .d-row .dv { font-weight: 700; }
     .no-eq  { font-size: 12px; color: var(--ink3); font-style: italic; margin-top: 6px; }
 
-    /* ── DS3 screening panel ──────────────────────────────────────────────── */
+    /* ── Seismic screening panel ──────────────────────────────────────────── */
     .screen-box {
       border-radius: 8px; padding: 10px 12px; margin: 10px 0;
       border: 2px solid var(--rule);
@@ -373,54 +373,46 @@
       <!-- ── Failure zone highlight (dynamic — drawn by JS) ──────────────── -->
       <g id="fzone-g" pointer-events="none"></g>
 
-      <!-- Hidden Valley Fault  P1=(30,450)  P2=(550,200) — passes under city -->
-      <path d="M30,450 L550,200" fill="none"
+      <!-- Hidden Valley Fault  P1=(30,450)  P2=(571,190) — 30 km, passes under city -->
+      <path d="M30,450 L571,190" fill="none"
             stroke="#C8901A" stroke-width="24" stroke-linecap="round" opacity=".18"
             pointer-events="none"/>
-      <path d="M30,450 L550,200" fill="none"
+      <path d="M30,450 L571,190" fill="none"
             stroke="#7A3A0A" stroke-width="3.5" stroke-linecap="round"
             pointer-events="none"/>
-      <!-- Geological tick marks (every ~50px along fault) -->
-      <line x1="57.4" y1="434.9" x2="64.6" y2="449.1" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="102.6" y1="413.1" x2="109.8" y2="427.3" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="147.8" y1="391.3" x2="155.0" y2="405.5" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="193.0" y1="369.5" x2="200.2" y2="383.7" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="238.2" y1="347.7" x2="245.4" y2="361.9" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="283.4" y1="325.9" x2="290.6" y2="340.1" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="328.6" y1="304.1" x2="335.8" y2="318.3" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="373.8" y1="282.3" x2="381.0" y2="296.5" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="419.0" y1="260.5" x2="426.2" y2="274.7" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="464.2" y1="238.7" x2="471.4" y2="252.9" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
-      <line x1="509.4" y1="216.9" x2="516.6" y2="231.1" stroke="#7A3A0A" stroke-width="2" stroke-linecap="round" pointer-events="none"/>
       <!-- Fault label -->
       <text font-size="11.5" font-weight="700" font-family="Arial" fill="#7A3A0A"
             transform="translate(36,468) rotate(-25.7)" pointer-events="none"
             letter-spacing=".5">Hidden Valley Fault</text>
 
       <!-- ── Fault distance graduations ────────────────────────────────────
-           Fault P1=(30,450)→P2=(550,200)  unit-normal=(0.433,0.901)
-           Marks every 20% of fault length = ~5.8 km each                 -->
+           Fault P1=(30,450)→P2=(571,190)  length=600px=30km  scale=0.05km/px
+           Unit direction: (0.9013,-0.4332)  Unit normal: (0.4332,0.9013)
+           Perpendicular tick marks every 5 km (100 px) at 0,5,10,15,20,25,30 km  -->
       <g pointer-events="none">
-        <!-- t=0  0 km -->
-        <line x1="26.1" y1="441.9" x2="33.9" y2="458.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="37" y="468" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">0</text>
-        <!-- t=0.2  ~6 km -->
-        <line x1="130.1" y1="391.9" x2="137.9" y2="408.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="141" y="418" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">6</text>
-        <!-- t=0.4  ~12 km -->
-        <line x1="234.1" y1="341.9" x2="241.9" y2="358.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="245" y="368" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">12</text>
-        <!-- t=0.6  ~17 km -->
-        <line x1="338.1" y1="291.9" x2="345.9" y2="308.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="349" y="318" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">17</text>
-        <!-- t=0.8  ~23 km -->
-        <line x1="442.1" y1="241.9" x2="449.9" y2="258.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="453" y="268" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">23</text>
-        <!-- t=1  ~29 km -->
-        <line x1="546.1" y1="191.9" x2="553.9" y2="208.1" stroke="#7A3A0A" stroke-width="2.5"/>
-        <text x="557" y="218" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">29</text>
+        <!-- 0 km — center (30,450) -->
+        <line x1="26.5" y1="442.8" x2="33.5" y2="457.2" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="37" y="464" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">0</text>
+        <!-- 5 km — center (120.1,406.7) -->
+        <line x1="116.6" y1="399.5" x2="123.6" y2="413.9" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="127" y="421" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">5</text>
+        <!-- 10 km — center (210.3,363.4) -->
+        <line x1="206.8" y1="356.2" x2="213.8" y2="370.6" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="217" y="378" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">10</text>
+        <!-- 15 km — center (300.4,320.1) -->
+        <line x1="296.9" y1="312.9" x2="303.9" y2="327.3" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="307" y="335" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">15</text>
+        <!-- 20 km — center (390.5,276.7) -->
+        <line x1="387.0" y1="269.5" x2="394.0" y2="283.9" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="397" y="291" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">20</text>
+        <!-- 25 km — center (480.7,233.4) -->
+        <line x1="477.2" y1="226.2" x2="484.2" y2="240.6" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="488" y="248" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">25</text>
+        <!-- 30 km — center (571,190) -->
+        <line x1="567.5" y1="182.8" x2="574.5" y2="197.2" stroke="#7A3A0A" stroke-width="2.5" stroke-linecap="round"/>
+        <text x="578" y="204" font-size="10" font-family="Arial" fill="#7A3A0A" text-anchor="middle" font-weight="700">30</text>
         <!-- "km" unit label -->
-        <text x="570" y="218" font-size="9" font-family="Arial" fill="#7A3A0A">(km)</text>
+        <text x="592" y="204" font-size="9" font-family="Arial" fill="#7A3A0A">(km)</text>
       </g>
 
       <!-- Epicenter marker -->
@@ -467,9 +459,10 @@
 ══════════════════════════════════════════════════════════════════════════ -->
 <script>
 // ── Constants ──────────────────────────────────────────────────────────────
-const KM_PER_PX = 0.05;
-// Fault passes under the city — updated position
-const FAULT = { p1:{x:30,y:450}, p2:{x:550,y:200} };
+const KM_PER_PX = 0.05;  // 1 px = 0.05 km → 100 px = 5 km → 600 px = 30 km
+const FAULT_LEN_KM = 30;
+// Fault: P1=(30,450) → P2=(571,190), exactly 600 px = 30 km
+const FAULT = { p1:{x:30,y:450}, p2:{x:571,y:190} };
 
 const MMI_COL = {
   1:'#FFFFFF', 2:'#BFCCFF', 3:'#9999FF', 4:'#80FFFF',
@@ -494,7 +487,7 @@ const MMI_DESC = ['',
   'Damage is total. Waves seen on ground surface.'
 ];
 
-// ── HAZUS DS3 (Extensive) PGA thresholds — updated with corrected values ──
+// ── Extensive-damage PGA thresholds (HAZUS-based) ────────────────────────
 const THRESHOLDS = {
   hospital:   0.68, cityhall:  0.20, school:    0.22, apartments: 0.38,
   church:     0.15, houses:    0.18, bridge:    0.20, warehouse:  0.22, farm: 0.15
@@ -589,11 +582,12 @@ function snapToFault(cx, cy) {
   return {x:p1.x+t*dx, y:p1.y+t*dy, t};
 }
 function faultLabel(t) {
-  if (t<0.15) return 'SW end (far from buildings)';
-  if (t<0.40) return 'SW sector';
-  if (t<0.60) return 'Central section';
-  if (t<0.85) return 'NE sector';
-  return 'NE end (closest to buildings)';
+  const km = Math.round(t * FAULT_LEN_KM);
+  if (km < 5)  return `SW end — ${km} km along fault`;
+  if (km < 13) return `SW sector — ${km} km along fault`;
+  if (km < 18) return `Central — ${km} km along fault`;
+  if (km < 26) return `NE sector — ${km} km along fault`;
+  return `NE end — ${km} km along fault`;
 }
 
 // ── Map interaction ───────────────────────────────────────────────────────
@@ -612,7 +606,7 @@ function onMapClick(e) {
   g.setAttribute('transform',`translate(${epiX.toFixed(1)},${epiY.toFixed(1)})`);
   g.setAttribute('display','');
   document.getElementById('gen-btn').disabled=false;
-  document.getElementById('epi-txt').textContent=`Fault position: ${(epiT*100).toFixed(0)}% along fault`;
+  document.getElementById('epi-txt').textContent=`Fault position: ${(epiT*FAULT_LEN_KM).toFixed(1)} km from SW end`;
   document.getElementById('status-txt').textContent='★ Epicenter snapped — adjust magnitude, then Generate';
   if (eqRun && !animating) generate();
 }
@@ -968,7 +962,7 @@ function showDetail(id) {
   const res = results[id];
   const thr = THRESHOLDS[id];
 
-  // ── DS3 screening panel ───────────────────────────────────────────────────
+  // ── Seismic screening panel ──────────────────────────────────────────────
   let screenHtml;
   if (res) {
     const pga_pct = (res.pga_g * 100).toFixed(2);
@@ -976,13 +970,13 @@ function showDetail(id) {
     const failed  = res.pga_g >= thr;
     const verdictClass = failed ? 'failed' : 'survived';
     const verdictText  = failed
-      ? `✗  DS3 EXCEEDED — damage expected`
+      ? `✗  EXTENSIVE DAMAGE EXPECTED`
       : `✓  BELOW THRESHOLD — expected to survive`;
     screenHtml = `
       <div class="screen-box">
-        <div class="screen-title">Seismic Screening — DS3 Model</div>
+        <div class="screen-title">Seismic Screening</div>
         <div class="d-row">
-          <span class="dl">DS3 threshold (extensive damage)</span>
+          <span class="dl">Extensive damage threshold</span>
           <span class="dv">${thr.toFixed(2)} g</span>
         </div>
         <div class="d-row">
@@ -990,22 +984,14 @@ function showDetail(id) {
           <span class="dv">${pga_pct} %g &nbsp;(${pga_ms2} m/s²)</span>
         </div>
         <div class="screen-verdict ${verdictClass}">${verdictText}</div>
-        <div style="font-size:10px;color:var(--ink3);margin-top:3px;line-height:1.5">
-          Loss model: ${failed ? '40% of replacement cost ($'+Math.round(b.rc*0.4).toLocaleString()+')'
-                                : 'no DS3 loss in simplified model'}
-        </div>
       </div>`;
   } else {
     screenHtml = `
       <div class="screen-box">
-        <div class="screen-title">Seismic Screening — DS3 Model</div>
+        <div class="screen-title">Seismic Screening</div>
         <div class="d-row">
-          <span class="dl">DS3 threshold (extensive damage)</span>
+          <span class="dl">Extensive damage threshold</span>
           <span class="dv">${thr ? thr.toFixed(2)+' g' : '—'}</span>
-        </div>
-        <div class="d-row">
-          <span class="dl">Loss at DS3 failure</span>
-          <span class="dv">${thr ? '40% × $'+b.rc.toLocaleString()+' = $'+Math.round(b.rc*0.4).toLocaleString() : '—'}</span>
         </div>
         <div class="screen-verdict pending">Generate an earthquake to screen this building</div>
       </div>`;
@@ -1036,6 +1022,24 @@ function showDetail(id) {
     <p class="b-desc">${b.desc}</p>
     <div class="d-row"><span class="dl">Replacement cost</span>
       <span class="dv">$${b.rc.toLocaleString()}</span></div>
+    ${(() => {
+      const repairAmt = '$' + Math.round(b.rc * 0.4).toLocaleString();
+      if (!res) return `
+        <div class="d-row">
+          <span class="dl">Cost to repair building</span>
+          <span class="dv" style="font-weight:700">${repairAmt}</span>
+        </div>`;
+      const failed = res.pga_g >= thr;
+      return failed
+        ? `<div class="d-row">
+            <span class="dl">Cost to repair building</span>
+            <span class="dv" style="font-weight:700;color:var(--ember)">${repairAmt}</span>
+          </div>`
+        : `<div class="d-row">
+            <span class="dl">Cost to repair building</span>
+            <span class="dv" style="font-weight:700;color:#2E7D32">$0 — no extensive damage</span>
+          </div>`;
+    })()}
     <div class="d-row"><span class="dl">Height</span>
       <span class="dv">${b.stories>0?b.stories+(b.stories>1?' storeys':' storey'):'N/A (infrastructure)'}</span></div>
     ${screenHtml}
