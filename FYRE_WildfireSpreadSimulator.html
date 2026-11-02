@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FYRE — Wildfire Spread Simulator</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#FAF9F6;--surface:#FFF;--surface2:#F0F5F4;
+  --ink:#19313F;--ink2:#3E535D;--ink3:#52636B;
+  --teal:#176F78;--teal-lt:#E8F2F1;
+  --ember:#A33E1F;--ember-s:#FCEFE8;
+  --rule:#D5E1E0;--r:8px;--shadow:0 2px 10px rgba(25,49,63,.08);
+}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--paper);
+     color:var(--ink);font-size:13px;height:100vh;display:flex;
+     flex-direction:column;overflow:hidden}
+
+/* ── FYRE bar ── */
+.fyre-bar{display:flex;align-items:center;gap:14px;min-height:54px;
+  padding:5px 18px;background:var(--surface);
+  border-top:3px solid var(--teal);border-bottom:1px solid var(--rule);flex-shrink:0}
+.fyre-mark{display:flex;align-items:center;gap:10px;flex:1}
+.wm{font-size:18px;font-weight:700;letter-spacing:.12em;color:var(--teal)}
+.course{font-size:11px;color:var(--ink3)}
+.fyre-logo{width:28px;height:32px;object-fit:contain}
+.fyre-tag{font-size:11px;background:var(--teal-lt);color:var(--teal);
+          padding:4px 8px;border-radius:4px;white-space:nowrap}
+
+/* ── Layout ── */
+.app{flex:1;overflow:hidden;display:flex;min-height:0}
+.sb{flex:0 0 234px;overflow-y:auto;padding:7px;display:flex;
+    flex-direction:column;gap:6px;background:var(--paper);
+    border-right:1px solid var(--rule)}
+.map-col{flex:1;overflow:hidden;display:flex;flex-direction:column;
+         min-width:0;position:relative}
+#map-div{flex:1;min-height:0}
+.leaflet-container{background:#e8e8e8}
+
+/* ── Cards ── */
+.card{background:var(--surface);border-radius:var(--r);
+  padding:9px 11px;box-shadow:var(--shadow);border:1px solid var(--rule)}
+.ct{font-size:10px;font-weight:700;color:var(--teal);
+  text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+
+/* ── Form ── */
+.field{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.cl{font-size:10px;font-weight:700;color:var(--ink3);
+  text-transform:uppercase;letter-spacing:.04em}
+select,input[type=text],input[type=number]{
+  width:100%;padding:5px 7px;border:1.5px solid var(--rule);
+  border-radius:5px;font-size:12px;background:var(--paper);
+  color:var(--ink);font-family:Arial,Helvetica,sans-serif}
+select:focus,input:focus{outline:none;border-color:var(--teal)}
+
+/* ── Buttons ── */
+.btn{padding:6px 11px;border:none;border-radius:6px;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:Arial,Helvetica,sans-serif;
+  transition:background .15s;width:100%;margin-top:3px}
+.btn-ember{background:var(--ember);color:#fff}
+.btn-ember:hover{background:#833218}
+.btn-ember:disabled{opacity:.35;cursor:not-allowed}
+.btn-teal{background:var(--teal);color:#fff}
+.btn-teal:hover{background:#125c63}
+.btn-outline{background:transparent;border:1.5px solid var(--rule);color:var(--ink3)}
+.btn-outline:hover{border-color:var(--teal);color:var(--teal)}
+
+/* ── File zone ── */
+.fz{border:2px dashed var(--rule);border-radius:var(--r);padding:11px;
+  text-align:center;cursor:pointer;transition:all .15s}
+.fz:hover{border-color:var(--teal);background:var(--teal-lt)}
+.fz input{display:none}
+.fz-icon{font-size:20px;line-height:1}
+.fz-lbl{font-size:10px;color:var(--ink3);margin-top:3px}
+.fz-ok{font-size:10px;font-weight:700;color:var(--teal)}
+
+/* ── Data stats ── */
+.ds{display:flex;justify-content:space-between;align-items:center;
+  padding:3px 0;border-bottom:1px solid var(--rule);font-size:10px}
+.ds:last-child{border-bottom:none}
+.dsv{font-weight:700;font-size:10px;background:var(--surface2);
+  padding:1px 6px;border-radius:3px;color:var(--ink2)}
+
+/* ── Wind compass ── */
+.cg{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.wb{padding:4px 0;border:1.5px solid var(--rule);border-radius:4px;
+  font-size:10px;font-weight:700;cursor:pointer;text-align:center;
+  background:var(--surface2);color:var(--ink3);
+  font-family:Arial,Helvetica,sans-serif;transition:all .12s}
+.wb:hover{border-color:var(--teal);color:var(--teal)}
+.wb.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.wb.mid{background:transparent;border-color:transparent;cursor:default;font-size:12px}
+
+/* ── Legend ── */
+.vbar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:3px 0}
+.vs{flex:1}
+.lr{display:flex;justify-content:space-between;font-size:9px;color:var(--ink3)}
+
+/* ── Building DivIcons ── */
+.bh{width:12px;height:12px;
+  clip-path:polygon(50% 0%,100% 42%,100% 100%,0% 100%,0% 42%);
+  border:1px solid rgba(0,0,0,.25);transition:transform .25s,filter .25s;
+  position:relative}
+.bh-ember{animation:ep .45s ease-in-out infinite alternate}
+.bh-burn{transform:scale(1.5)!important;animation:bp .28s ease-in-out infinite alternate;z-index:900}
+.bh-dest{transform:scale(0.7)!important;filter:grayscale(1)!important}
+.bh-dest::after{content:'';position:absolute;width:6px;height:8px;
+  background:rgba(100,100,100,.35);border-radius:50%;top:-10px;left:3px;
+  animation:sm .9s ease-out infinite}
+@keyframes ep{from{opacity:.7}to{opacity:1}}
+@keyframes bp{from{filter:brightness(1)}to{filter:brightness(2)}}
+@keyframes sm{0%{transform:translateY(0) scale(1);opacity:.4}
+              100%{transform:translateY(-10px) scale(2);opacity:0}}
+
+/* ── Ignition icon ── */
+.ig-icon{width:20px;height:20px;background:#FF4500;
+  border:3px solid #fff;border-radius:50%;
+  box-shadow:0 0 0 2px #FF4500,0 0 0 5px rgba(255,69,0,.4);
+  animation:igp 1.3s ease-out infinite}
+@keyframes igp{0%{box-shadow:0 0 0 2px #FF4500,0 0 0 5px rgba(255,69,0,.5)}
+               100%{box-shadow:0 0 0 2px #FF4500,0 0 0 18px rgba(255,69,0,0)}}
+.ig-tooltip{background:rgba(255,69,0,.9)!important;color:#fff!important;
+  font-weight:700!important;border:none!important;box-shadow:none!important}
+.ig-tooltip::before{border-top-color:rgba(255,69,0,.9)!important}
+
+/* ── Status bar ── */
+.sbar{background:#1e2640;color:rgba(255,255,255,.75);font-size:10px;
+  padding:4px 12px;display:flex;align-items:center;gap:10px;
+  flex-wrap:wrap;flex-shrink:0;min-height:26px}
+.sbar-step{margin-left:auto;color:rgba(255,255,255,.4)}
+
+/* ── Inspector overlay ── */
+.ins-panel{position:absolute;top:8px;right:8px;width:216px;
+  background:var(--surface);border-radius:var(--r);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);border:1px solid var(--rule);
+  padding:9px 11px;display:none;z-index:1000;
+  max-height:calc(100% - 50px);overflow-y:auto}
+.ins-close{float:right;background:none;border:none;cursor:pointer;
+  font-size:14px;color:var(--ink3);line-height:1;padding:0}
+.irow{display:flex;justify-content:space-between;align-items:flex-start;
+  padding:2px 0;border-bottom:1px solid var(--rule);font-size:10px}
+.irow:last-child{border-bottom:none}
+.ival{font-weight:700;font-size:10px;color:var(--ink)}
+
+/* ── Results overlay ── */
+.res-panel{position:absolute;bottom:34px;right:8px;width:226px;
+  background:var(--surface);border-radius:var(--r);
+  box-shadow:0 4px 16px rgba(0,0,0,.2);border:1px solid var(--rule);
+  padding:9px 11px;display:none;z-index:1000;
+  max-height:calc(55% - 34px);overflow-y:auto}
+.rm{display:flex;justify-content:space-between;padding:3px 0;
+  border-bottom:1px solid var(--rule);font-size:11px}
+.rm:last-child{border-bottom:none}
+.mv{font-weight:700;font-size:12px}
+.id-list{font-size:9px;font-family:monospace;color:var(--ink2);
+  background:var(--surface2);padding:4px 6px;border-radius:4px;
+  max-height:60px;overflow-y:auto;margin:4px 0;line-height:1.6}
+.formula-box{background:var(--teal-lt);border-left:3px solid var(--teal);
+  padding:6px 8px;font-size:10px;color:var(--ink2);line-height:1.6;
+  border-radius:0 4px 4px 0;margin:6px 0}
+.ans-row{display:flex;gap:6px;align-items:center;margin-top:5px}
+.ans-row input{flex:1;padding:5px 7px;border:1.5px solid var(--rule);
+  border-radius:5px;font-size:11px;font-family:Arial}
+.ans-row .btn{width:auto;margin:0;padding:5px 9px;font-size:10px}
+.cmp{display:flex;gap:5px;margin-top:5px}
+.cb{flex:1;background:var(--surface2);border-radius:5px;padding:5px;text-align:center}
+.cv{font-size:13px;font-weight:700}.cl2{font-size:9px;color:var(--ink3);
+  text-transform:uppercase;margin-top:1px}
+.ib{background:var(--teal-lt);border-left:3px solid var(--teal);
+  padding:5px 8px;font-size:10px;color:var(--ink2);line-height:1.5;
+  border-radius:0 4px 4px 0;margin-top:4px}
+</style>
+</head>
+<body>
+
+<header class="fyre-bar">
+  <div class="fyre-mark">
+    <img src="design-system/assets/FYRE_Artwork.png" class="fyre-logo" alt="FYRE">
+    <div>
+      <span class="wm">FYRE</span>
+      <div class="course">Engineering Against Natural Disasters&nbsp;&middot;&nbsp;Lehigh University</div>
+    </div>
+  </div>
+  <span class="fyre-tag">Week 4&nbsp;&middot;&nbsp;Wildfire Spread Simulator</span>
+</header>
+
+<div class="app">
+
+<!-- LEFT SIDEBAR -->
+<aside class="sb">
+
+  <div class="card">
+    <div class="ct">Load Your Data</div>
+    <label class="fz" id="fz">
+      <input type="file" id="csv-in" accept=".csv" onchange="loadFile(this.files[0])">
+      <div class="fz-icon">&#128194;</div>
+      <div id="fz-lbl" class="fz-lbl">Click to select a CSV file</div>
+    </label>
+    <div class="ib" style="margin-top:6px">
+      Start with your assigned CSV file. After the data cleaning exercises,
+      come back and load your cleaned version to compare.
+    </div>
+  </div>
+
+  <div class="card" id="fire-card" style="display:none">
+    <div class="ct">Fire / Community</div>
+    <div class="field">
+      <div class="cl">Select event</div>
+      <select id="fire-sel" onchange="onFireChange()">
+        <option value="">&#8212; choose &#8212;</option>
+        <option value="Blue Ridge">Blue Ridge</option>
+        <option value="Carr">Carr</option>
+        <option value="Franklin">Franklin</option>
+        <option value="Glass">Glass</option>
+        <option value="Silverado">Silverado</option>
+      </select>
+    </div>
+    <div id="fire-count" style="font-size:10px;color:var(--ink3)"></div>
+    <div id="fire-miss" style="font-size:10px;color:#888;margin-top:4px;line-height:1.4;display:none"></div>
+  </div>
+
+  <div class="card" id="wind-card" style="display:none">
+    <div class="ct">Wind Direction</div>
+    <div class="cg">
+      <button class="wb" data-d="NW">NW</button>
+      <button class="wb" data-d="N">N</button>
+      <button class="wb" data-d="NE">NE</button>
+      <button class="wb" data-d="W">W</button>
+      <button class="wb mid">&#9670;</button>
+      <button class="wb" data-d="E">E</button>
+      <button class="wb" data-d="SW">SW</button>
+      <button class="wb" data-d="S">S</button>
+      <button class="wb" data-d="SE">SE</button>
+    </div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:3px">
+      Typical Santa Ana: <strong>NE &#8594; SW</strong>
+    </div>
+    <button class="btn btn-ember" id="run-btn" onclick="startSim()" disabled style="margin-top:8px">
+      &#128293; Run Simulation</button>
+    <button class="btn btn-outline" onclick="resetSim()">&#8635; Reset</button>
+    <div id="sim-note" style="font-size:9px;color:var(--ink3);margin-top:3px;line-height:1.4">
+      Click the map to set the ignition point.
+    </div>
+  </div>
+
+  <div class="card" id="stats-card" style="display:none">
+    <div class="ct">Dataset Summary</div>
+    <div id="stats-items"></div>
+  </div>
+
+  <div class="card" id="legend-card" style="display:none">
+    <div class="ct">Vulnerability</div>
+    <div class="vbar">
+      <div class="vs" style="background:#2E7D32"></div>
+      <div class="vs" style="background:#7CB342"></div>
+      <div class="vs" style="background:#FDD835"></div>
+      <div class="vs" style="background:#FB8C00"></div>
+      <div class="vs" style="background:#E53935"></div>
+      <div class="vs" style="background:#FF3D00"></div>
+      <div class="vs" style="background:#AAA"></div>
+    </div>
+    <div class="lr">
+      <span>Safe</span><span>Low</span><span>Med</span>
+      <span>Hi</span><span>V.Hi</span><span>&#9888;</span><span>?</span>
+    </div>
+    <div style="font-size:9px;color:var(--ink3);margin-top:5px;line-height:1.4">
+      Score combines: roof type, eave style, vent screening,
+      siding material, window glazing, and vegetation proximity.
+      Click any building to see its raw values.
+    </div>
+  </div>
+
+</aside>
+
+<!-- MAP COLUMN -->
+<div class="map-col">
+  <div id="map-div"></div>
+
+  <div class="sbar" id="sbar">
+    <span id="sbar-main" style="color:rgba(255,255,255,.4)">Load a CSV to start</span>
+    <span id="sbar-step" class="sbar-step"></span>
+  </div>
+
+  <!-- Building inspector -->
+  <div class="ins-panel" id="ins-panel">
+    <button class="ins-close" onclick="closeIns()">&#10005;</button>
+    <div class="ct" style="margin-bottom:4px">Building Data</div>
+    <div id="ins-body"></div>
+  </div>
+
+  <!-- Results -->
+  <div class="res-panel" id="res-panel">
+    <div class="ct" style="margin-bottom:4px">Simulation Results</div>
+    <div id="res-body"></div>
+  </div>
+</div>
+
+</div><!-- .app -->
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+const CANONICAL=['Blue Ridge','Carr','Franklin','Glass','Silverado'];
+const VALID={Roof:[0,1,2,3],Eaves:[0,1],Vent:[0,1,2],Siding:[0,1],Window:[0,1]};
+const WANGLES={N:90,NE:45,E:0,SE:-45,S:-90,SW:-135,W:180,NW:135};
+const SPREAD_M=320, IGN_M=80;   // fire spread radius in meters
+const MAX_STEPS=42, STEP_MS=155;
+const LAMBDA=0.02;              // annual wildfire probability given to students
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let allRows=[], fireRows=[], bldgs=[];
+let states=[], vals=[], stepN=0, timer=null, running=false;
+let igLat=null, igLon=null, windDeg=45;
+let selIdx=null, runs=[], savedEACL=[];
+let map=null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEAFLET INIT
+// ═══════════════════════════════════════════════════════════════════════════
+function initMap() {
+  map = L.map('map-div', {
+    zoomControl: true, attributionControl: true, preferCanvas: true
+  });
+  // ESRI Light Gray Canvas — free, no API key, no Referer required, CORS-open.
+  // Works from file:// and any server. URL uses {z}/{y}/{x} (ESRI row/col order);
+  // Leaflet substitutes named template vars correctly regardless of URL position.
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ', maxZoom: 16 }
+  ).addTo(map);
+  // Label overlay on top (roads, place names)
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '', maxZoom: 16, opacity: 0.8 }
+  ).addTo(map);
+  map.setView([37.5, -119], 6); // California overview until data loads
+}
+initMap();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ═══════════════════════════════════════════════════════════════════════════
+function loadFile(f) {
+  if(!f) return;
+  document.getElementById('fz-lbl').textContent = 'Loading...';
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      allRows = parseCSV(ev.target.result);
+      const l = document.getElementById('fz-lbl');
+      l.className = 'fz-ok';
+      l.textContent = '\u2713 ' + f.name + ' \u00b7 ' + allRows.length.toLocaleString() + ' rows';
+      onLoaded();
+    } catch(err) { document.getElementById('fz-lbl').textContent = 'Error: ' + err.message; }
+  };
+  r.readAsText(f);
+}
+function parseCSV(txt) {
+  const lines = txt.trim().split(/\r?\n/);
+  if(lines.length < 2) throw new Error('empty file');
+  const hdr = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).filter(l => l.trim()).map(l => {
+    const v = l.split(','); const o = {};
+    hdr.forEach((h,j) => { o[h] = v[j] !== undefined ? v[j].trim() : ''; });
+    return o;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ON LOADED
+// ═══════════════════════════════════════════════════════════════════════════
+function onLoaded() {
+  const presentFires = new Set(allRows.map(r => (r.Fire||'').trim()));
+  const sel = document.getElementById('fire-sel');
+  [...sel.options].forEach(o => {
+    if(!o.value) return;
+    o.disabled = !presentFires.has(o.value);
+    o.textContent = o.value + (presentFires.has(o.value) ? ' \u2714' : '');
+  });
+  buildStats(allRows);
+  document.getElementById('fire-card').style.display = 'block';
+  document.getElementById('stats-card').style.display = 'block';
+  if(presentFires.has('Silverado')) sel.value = 'Silverado';
+  else { const av = [...sel.options].find(o => o.value && !o.disabled); if(av) sel.value = av.value; }
+  if(sel.value) onFireChange();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATASET SUMMARY (no "ok/bad" labels — just counts)
+// ═══════════════════════════════════════════════════════════════════════════
+function buildStats(rows) {
+  const uFires = new Set(rows.map(r => (r.Fire||'').trim()).filter(Boolean)).size;
+  let cr_gt1=0, neg_aiv=0, roof_gt3=0, miss=0;
+  rows.forEach(r => {
+    const cr = +r.CanopyRatio; if(!isNaN(cr) && cr > 1) cr_gt1++;
+    const av = +r.AIV; if(!isNaN(av) && av < 0) neg_aiv++;
+    const rf = +r.Roof; if(r.Roof !== '' && !isNaN(rf) && rf > 3) roof_gt3++;
+    if(!r.Roof || !r.Eaves || !r.Vent || !r.Siding || !r.Window || !r.AIV) miss++;
+  });
+  document.getElementById('stats-items').innerHTML = [
+    ['Total structures', rows.length.toLocaleString()],
+    ['Unique Fire name spellings', uFires],
+    ['CanopyRatio values > 1.0', cr_gt1],
+    ['Negative AIV values', neg_aiv],
+    ['Roof code values > 3', roof_gt3],
+    ['Rows with any missing field', miss],
+  ].map(([t,v]) => `<div class="ds"><span>${t}</span><span class="dsv">${v}</span></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// FIRE SELECTION
+// ═══════════════════════════════════════════════════════════════════════════
+function onFireChange() {
+  const sel = document.getElementById('fire-sel').value;
+  if(!sel) return;
+  fireRows = allRows.filter(r => (r.Fire||'').trim() === sel);
+  const variants = allRows.filter(r => {
+    const f = (r.Fire||'');
+    if(f.trim() === sel) return false;
+    return f.toLowerCase().replace(/\s+/g,'') === sel.toLowerCase().replace(/\s+/g,'');
+  });
+  document.getElementById('fire-count').textContent = fireRows.length + ' buildings for "' + sel + '"';
+  const md = document.getElementById('fire-miss');
+  if(variants.length > 0) {
+    const vs = [...new Set(variants.map(r => '"'+r.Fire+'"'))].join(', ');
+    md.style.display = 'block';
+    md.textContent = variants.length + ' row(s) not matched — spelling variants: ' + vs;
+  } else md.style.display = 'none';
+  setupMap(fireRows);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VULNERABILITY (CanopyRatio NOT clamped — corrupted values blow up score)
+// ═══════════════════════════════════════════════════════════════════════════
+function vuln(r) {
+  const rf=+r.Roof, ea=+r.Eaves, vt=+r.Vent, sd=+r.Siding, wn=+r.Window, cr=+r.CanopyRatio;
+  if([rf,ea,vt,sd,wn,cr].some(v => isNaN(v))) return null;
+  return (3-rf)/3*0.30 + (1-ea)*0.15 + (1-vt/2)*0.15
+       + (1-sd)*0.20  + (1-wn)*0.10  + cr*0.10;
+}
+function vColor(v) {
+  if(v === null) return '#AAAAAA';
+  if(v > 1.0)   return '#FF3D00';
+  if(v > 0.80)  return '#B71C1C';
+  if(v > 0.65)  return '#E53935';
+  if(v > 0.50)  return '#FB8C00';
+  if(v > 0.35)  return '#FDD835';
+  if(v > 0.20)  return '#7CB342';
+  return '#2E7D32';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAP SETUP
+// ═══════════════════════════════════════════════════════════════════════════
+function setupMap(rows) {
+  // Clear previous markers
+  bldgs.forEach(b => { if(b.marker) b.marker.remove(); });
+  bldgs = [];
+  if(!rows.length) { setSbar('No buildings for this fire'); return; }
+
+  const lats = rows.map(r => +r.y).filter(v => !isNaN(v));
+  const lons = rows.map(r => +r.x).filter(v => !isNaN(v));
+  if(!lats.length) return;
+
+  const bounds = L.latLngBounds(
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)]
+  );
+
+  rows.forEach((r, i) => {
+    const lat = +r.y, lon = +r.x;
+    if(isNaN(lat) || isNaN(lon)) return;
+    const v = vuln(r);
+    const b = { idx: bldgs.length, r, lat, lon,
+                v, aiv: Math.max(0, +r.AIV || 0),
+                id: r.StructureID || ('B' + i), marker: null };
+    bldgs.push(b);
+    b.marker = makeBldgMarker(b);
+  });
+
+  map.fitBounds(bounds.pad(0.2));
+
+  // Map click for ignition
+  map.off('click').on('click', e => {
+    if(running) return;
+    placeIG(e.latlng.lat, e.latlng.lng);
+  });
+
+  ['wind-card','legend-card'].forEach(id => document.getElementById(id).style.display = 'block');
+  document.getElementById('run-btn').disabled = true;
+  states = bldgs.map(() => 'safe');
+  vals   = bldgs.map(b => b.v);
+  igLat = igLon = null; selIdx = null;
+  document.getElementById('ins-panel').style.display = 'none';
+  document.getElementById('res-panel').style.display = 'none';
+
+  const nc = bldgs.filter(b => b.v !== null && b.v > 1).length;
+  const nm = bldgs.filter(b => b.v === null).length;
+  setSbar(bldgs.length + ' buildings loaded \u00b7 click map to place ignition');
+  if(nc > 0 || nm > 0) {
+    setSbar(bldgs.length + ' buildings \u00b7 ' + nc + ' show elevated scores \u00b7 ' + nm + ' unscored');
+  }
+
+  // Auto-place ignition at western-most building
+  if(bldgs.length) {
+    const w = bldgs.reduce((a,b) => a.lon < b.lon ? a : b);
+    placeIG(w.lat, w.lon);
+  }
+}
+
+function makeBldgMarker(b) {
+  const icon = L.divIcon({
+    html: '<div class="bh" style="background:' + vColor(b.v) + '"></div>',
+    className: '', iconSize: [12,12], iconAnchor: [6,6]
+  });
+  const m = L.marker([b.lat, b.lon], { icon, zIndexOffset: 0 }).addTo(map);
+  m.on('click', e => { L.DomEvent.stopPropagation(e); inspectB(b.idx); });
+  return m;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WIND
+// ═══════════════════════════════════════════════════════════════════════════
+function setWind(dir) {
+  document.querySelectorAll('.wb:not(.mid)').forEach(b => b.classList.remove('on'));
+  const btn = [...document.querySelectorAll('.wb')].find(b => b.dataset.d === dir);
+  if(btn) btn.classList.add('on');
+  windDeg = WANGLES[dir] || 0;
+}
+document.querySelectorAll('.wb:not(.mid)').forEach(b => b.addEventListener('click', () => setWind(b.dataset.d)));
+setWind('NE');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IGNITION — vivid pulsing marker
+// ═══════════════════════════════════════════════════════════════════════════
+let igMarker = null;
+function placeIG(lat, lon) {
+  if(igMarker) igMarker.remove();
+  igLat = lat; igLon = lon;
+  igMarker = L.marker([lat, lon], {
+    icon: L.divIcon({
+      html: '<div class="ig-icon"></div>',
+      className: '',
+      iconSize: [20,20], iconAnchor: [10,10]
+    }),
+    zIndexOffset: 2000,
+    interactive: false
+  }).addTo(map);
+  igMarker.bindTooltip('\u2605 Ignition', {
+    permanent: true, className: 'ig-tooltip',
+    direction: 'top', offset: [0,-12]
+  }).openTooltip();
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('sim-note').textContent = 'Ignition set \u2014 press Run.';
+  resetSim(false);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIMULATION
+// ═══════════════════════════════════════════════════════════════════════════
+function startSim() {
+  if(running || igLat === null) return;
+  running = true; stepN = 0;
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('run-btn').textContent = '\uD83D\uDD25 Simulating\u2026';
+
+  states = bldgs.map(() => 'safe');
+  // Seed ignition: buildings within IGN_M metres
+  const ig = L.latLng(igLat, igLon);
+  bldgs.forEach((b,i) => {
+    if(ig.distanceTo(L.latLng(b.lat,b.lon)) <= IGN_M) states[i] = 'burning';
+  });
+  // Fallback: nearest building
+  if(!states.includes('burning') && bldgs.length) {
+    let minD = Infinity, minI = 0;
+    bldgs.forEach((b,i) => { const d=ig.distanceTo(L.latLng(b.lat,b.lon)); if(d<minD){minD=d;minI=i;} });
+    states[minI] = 'burning';
+  }
+  renderStates();
+  timer = setInterval(simStep, STEP_MS);
+}
+
+function simStep() {
+  if(stepN >= MAX_STEPS) { endSim(); return; }
+  const wRad = windDeg * Math.PI / 180;
+  const ns = [...states];
+
+  bldgs.forEach((b,i) => {
+    if(states[i] === 'destroyed') return;
+    let exp = 0;
+    bldgs.forEach((s,j) => {
+      if(states[j] !== 'burning' && states[j] !== 'ember') return;
+      const d = L.latLng(b.lat,b.lon).distanceTo(L.latLng(s.lat,s.lon));
+      if(d > SPREAD_M || d < 0.5) return;
+      // Bearing from s to b (standard math: 0=E)
+      const dx = b.lon - s.lon, dy = b.lat - s.lat;
+      const ang = Math.atan2(dy, dx);
+      const align = Math.max(0, Math.cos(ang - wRad));
+      const sv = Math.min(vals[j] !== null ? vals[j] : 0.5, 1.8);
+      exp += sv * align * (1 - d/SPREAD_M) * 1.2;
+    });
+    const bv = vals[i] !== null ? vals[i] : 0.40;
+    if(exp * bv > 0.18) ns[i] = states[i] === 'ember' ? 'burning' : 'ember';
+    if(states[i] === 'burning' && Math.random() < Math.min(bv,1.5) * 0.26) ns[i] = 'destroyed';
+  });
+
+  states = ns;
+  renderStates();
+  stepN++;
+  setSbarStep('Step ' + stepN + '\u2009/\u2009' + MAX_STEPS);
+}
+
+const STATE_COLORS = { safe: null, ember: '#FF8F00', burning: '#D50000', destroyed: '#2E2E2E' };
+const STATE_CLASSES = { safe: '', ember: 'bh-ember', burning: 'bh-burn', destroyed: 'bh-dest' };
+
+function renderStates() {
+  bldgs.forEach((b,i) => {
+    const el = b.marker ? b.marker.getElement() : null;
+    if(!el) return;
+    const div = el.querySelector('.bh');
+    if(!div) return;
+    div.className = 'bh ' + STATE_CLASSES[states[i]];
+    const col = STATE_COLORS[states[i]] || vColor(b.v);
+    div.style.background = col;
+    // Boost z-index for burning
+    b.marker.setZIndexOffset(states[i]==='burning' ? 800 : states[i]==='ember' ? 400 : 0);
+  });
+}
+
+function endSim() {
+  clearInterval(timer); timer = null; running = false;
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('run-btn').textContent = '\uD83D\uDD25 Run Again';
+  setSbarStep('');
+
+  const burned = bldgs.filter((_,i) => states[i]==='burning'||states[i]==='destroyed');
+  const survived = bldgs.length - burned.length;
+  const dmg = burned.reduce((s,b) => s + b.aiv, 0);
+  const burnedIDs = burned.map(b => b.id);
+
+  const run = {
+    label: 'Run ' + (runs.length+1),
+    burned: burned.length, survived, total: bldgs.length,
+    dmg, burnedIDs, eacl: dmg * LAMBDA
+  };
+  runs.push(run);
+  showResults(run);
+}
+
+function showResults(run) {
+  const idStr = run.burnedIDs.length
+    ? run.burnedIDs.slice(0,30).join(', ') + (run.burnedIDs.length>30?', \u2026':'')
+    : '(none)';
+  const cmpHtml = runs.length >= 2 ? buildCmp() : '';
+  document.getElementById('res-body').innerHTML = `
+    <div class="rm"><span>Buildings burned / total</span>
+      <span class="mv" style="color:var(--ember)">${run.burned}&nbsp;/&nbsp;${run.total}</span></div>
+    <div class="rm"><span>Survival rate</span>
+      <span class="mv" style="color:#2E7D32">${(run.survived/run.total*100).toFixed(0)}%</span></div>
+
+    <div style="font-weight:700;font-size:10px;color:var(--teal);
+      text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px">
+      &#128202; Calculation Task</div>
+    <p style="font-size:10px;color:var(--ink2);line-height:1.5;margin-bottom:4px">
+      Burned building IDs — look each one up in your CSV to find its assessed
+      property value (<strong>AIV</strong>):
+    </p>
+    <div class="id-list">${idStr}</div>
+    <div class="formula-box">
+      <strong>Expected Annual Community Loss</strong><br>
+      EACL = &#955; &times; &Sigma; (AIV of burned buildings)<br>
+      &#955; = <strong>0.02</strong> fires/yr (historical rate for this region)<br><br>
+      <ol style="margin-left:14px;font-size:10px;line-height:1.8">
+        <li>Sum the AIV column for the IDs above.</li>
+        <li>Multiply by 0.02.</li>
+        <li>Enter your answer below.</li>
+      </ol>
+    </div>
+    <div class="ans-row">
+      <span style="font-size:10px;color:var(--ink3);white-space:nowrap">EACL = $</span>
+      <input type="number" id="eacl-in" placeholder="your estimate" min="0">
+      <button class="btn btn-teal" onclick="saveEACL(${runs.length-1})">Save</button>
+    </div>
+    <div id="eacl-saved-${runs.length-1}" style="font-size:10px;color:#2E7D32;margin-top:3px"></div>
+    ${cmpHtml}`;
+  document.getElementById('res-panel').style.display = 'block';
+}
+
+function saveEACL(runIdx) {
+  const v = parseFloat(document.getElementById('eacl-in').value);
+  if(isNaN(v) || v < 0) return;
+  savedEACL[runIdx] = v;
+  const sp = document.getElementById('eacl-saved-'+runIdx);
+  if(sp) sp.textContent = '\u2713 Saved: $' + v.toLocaleString();
+}
+
+function buildCmp() {
+  const r1 = runs[0], r2 = runs[runs.length-1];
+  const dd = r1.dmg - r2.dmg;
+  const eacl1 = savedEACL[0] !== undefined ? '$'+savedEACL[0].toLocaleString() : '(not saved)';
+  const eacl2 = savedEACL[runs.length-1] !== undefined ? '$'+savedEACL[runs.length-1].toLocaleString() : '(not saved)';
+  return `<div style="font-weight:700;font-size:10px;color:var(--teal);
+    text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px">Comparison</div>
+    <div class="cmp">
+      <div class="cb" style="border-left:2px solid var(--ember)">
+        <div class="cv">${r1.burned}</div><div class="cl2">Run 1 burned</div>
+        <div style="font-size:9px;margin-top:2px;color:var(--ink3)">EACL: ${eacl1}</div>
+      </div>
+      <div class="cb" style="border-left:2px solid #2E7D32">
+        <div class="cv">${r2.burned}</div><div class="cl2">Run 2 burned</div>
+        <div style="font-size:9px;margin-top:2px;color:var(--ink3)">EACL: ${eacl2}</div>
+      </div>
+    </div>
+    ${Math.abs(dd)>5000?`<div class="ib" style="margin-top:5px">
+      Difference in simulated damage: <strong>$${(Math.abs(dd)/1e6).toFixed(2)}M</strong>.
+      If your EACL estimates differ significantly, trace back which buildings burned differently — and why.
+    </div>`:''}`;
+}
+
+function resetSim(redraw=true) {
+  clearInterval(timer); timer = null; running = false;
+  states = bldgs.map(() => 'safe');
+  stepN = 0;
+  if(redraw) renderStates();
+  document.getElementById('run-btn').textContent = '\uD83D\uDD25 Run Simulation';
+  document.getElementById('run-btn').disabled = (igLat === null);
+  setSbarStep('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUILDING INSPECTOR (raw values, no "IMPOSSIBLE" labels)
+// ═══════════════════════════════════════════════════════════════════════════
+function inspectB(idx) {
+  selIdx = idx;
+  const b = bldgs[idx], r = b.r, v = b.v;
+  function row(key, val) {
+    return `<div class="irow">
+      <span style="color:var(--ink3)">${key}</span>
+      <span class="ival">${val !== '' && val !== null ? val : '<em style="color:#aaa">—</em>'}</span>
+    </div>`;
+  }
+  const vstr = v === null
+    ? '<em style="color:#888">N/A</em>'
+    : `<strong style="color:${vColor(v)}">${v.toFixed(3)}</strong>`;
+  const stlbl = stepN > 0 ? `<span style="font-size:9px;color:var(--ink3);margin-left:4px">
+    [${states[idx]||'safe'}]</span>` : '';
+  document.getElementById('ins-body').innerHTML = `
+    <div style="font-weight:700;font-size:10px;color:var(--teal);margin-bottom:4px">
+      ${r.StructureID||'(no ID)'}${stlbl}</div>
+    <div style="font-size:10px;margin-bottom:5px">Vuln. score: ${vstr}</div>
+    ${row('Roof type (0-3)', r.Roof)}
+    ${row('Eave type (0-1)', r.Eaves)}
+    ${row('Vent screening (0-2)', r.Vent)}
+    ${row('Siding (0-1)', r.Siding)}
+    ${row('Window glazing (0-1)', r.Window)}
+    ${row('CanopyRatio', r.CanopyRatio)}
+    ${row('CanopyDist (m)', r.CanopyDist)}
+    ${row('AIV ($)', r.AIV !== '' ? (+r.AIV).toLocaleString() : '')}
+    ${row('Year built', r.YBuilt)}
+    <div style="font-size:9px;color:var(--ink3);margin-top:4px">
+      Coords: ${(+r.y).toFixed(5)}, ${(+r.x).toFixed(5)}</div>`;
+  document.getElementById('ins-panel').style.display = 'block';
+}
+function closeIns() {
+  selIdx = null;
+  document.getElementById('ins-panel').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+function setSbar(main) { document.getElementById('sbar-main').textContent = main||''; }
+function setSbarStep(s) { document.getElementById('sbar-step').textContent = s; }
+</script>
+</body>
+</html>
