@@ -492,7 +492,7 @@
       <div class="ans-feedback" id="ans-feedback"></div>
       <div style="font-size:10px;color:var(--ink3);margin-top:6px;line-height:1.4">
         The app compares your estimate to the true E[Loss] computed by integrating
-        the fragility curve over all source scenarios. Accuracy threshold: within 10%.
+        the fragility curve over all source scenarios. Accuracy threshold: within 1%.
       </div>
     </div>
   </aside>
@@ -1245,14 +1245,15 @@ function fragProb(pga, mu, beta) {
 }
 
 // ── Compute true E[Loss] by integrating over fault × depths ─────────────
-// Pre-computed dense values (N=2000 per depth, depths=[5,10,25,60] km)
+// Exact values: Mw=7.5, h=5 km fixed, integrated over full 30 km fault
+// Computed with scipy.integrate.quad, ε=1e-9 (effectively exact)
 const TRUE_ELOSS = {
-  hospital:73285, cityhall:191519, school:264067, apartments:437420,
-  church:159828, houses:561881, bridge:498113, warehouse:32392, farm:16315,
+  hospital:263026, cityhall:381236,  school:564407,    apartments:1258270,
+  church:279315,   houses:1114023,   bridge:1039484,   warehouse:74902,  farm:28805,
 };
 const TRUE_EP = {
-  hospital:0.015, cityhall:0.399, school:0.264, apartments:0.137,
-  church:0.499, houses:0.312, bridge:0.356, warehouse:0.135, farm:0.272,
+  hospital:0.0548, cityhall:0.7942, school:0.5644, apartments:0.3932,
+  church:0.8729,   houses:0.6189,   bridge:0.7425, warehouse:0.3121,  farm:0.4801,
 };
 
 // ── Sample counter (incremented each time a reading is taken) ─────────────
@@ -1340,21 +1341,21 @@ function checkAnswer() {
   const fb      = document.getElementById('ans-feedback');
   fb.style.display = 'block';
 
-  if(relErr < 0.10) {
+  if(relErr < 0.01) {
     fb.className = 'ans-feedback ans-nailed';
-    fb.innerHTML = `✓ Excellent! Your estimate is within 10% of the true value.`
+    fb.innerHTML = `✓ Excellent! Your estimate is within 1% of the true value.`
       + `<br>True E[Loss] = $${trueEL.toLocaleString()}`
       + `<br>Your estimate: $${Math.round(val).toLocaleString()}`
-      + ` (${(relErr*100).toFixed(1)}% error)`;
-  } else if(relErr < 0.22) {
+      + ` (${(relErr*100).toFixed(2)}% error)`;
+  } else if(relErr < 0.05) {
     fb.className = 'ans-feedback ans-closer';
-    fb.innerHTML = `≈ Getting close — ${(relErr*100).toFixed(0)}% off.`
-      + ` Try ${Math.max(0, 50-n)} more readings to reduce sampling variance.`;
+    fb.innerHTML = `≈ Getting close — ${(relErr*100).toFixed(1)}% off.`
+      + ` Keep sampling to tighten your estimate further.`;
   } else {
     fb.className = 'ans-feedback ans-keep-going';
-    fb.innerHTML = `✗ Not quite yet — ${(relErr*100).toFixed(0)}% off.`
+    fb.innerHTML = `✗ Not quite yet — ${(relErr*100).toFixed(1)}% off.`
       + ` You have ${n} reading${n===1?'':'s'}. Keep sampling — aim for 50+`
-      + ` with varied fault positions <em>and</em> depths.`;
+      + ` with varied fault positions.`;
   }
 }
 </script>
